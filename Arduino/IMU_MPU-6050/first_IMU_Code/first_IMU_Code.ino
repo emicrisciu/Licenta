@@ -164,14 +164,20 @@ void loop() {
   }
 
   // Print values with labels for Arduino Serial Plotter
-  Serial.print("AccelX:"); Serial.println(a.acceleration.x);
-  Serial.print("AccelY:"); Serial.println(a.acceleration.y);
-  Serial.print("AccelZ:"); Serial.println(a.acceleration.z);
-  Serial.print("GyroX:"); Serial.println(g.gyro.x);
-  Serial.print("GyroY:"); Serial.println(g.gyro.y);
-  Serial.print("GyroZ:"); Serial.println(g.gyro.z);
-  Serial.print("Temp:"); Serial.println(temp.temperature);
-  Serial.print("Impact:"); Serial.println(impactSignal);
+  Serial.print("MPU:");
+  Serial.print(a.acceleration.x);
+  Serial.print(",");
+  Serial.print(a.acceleration.y);
+  Serial.print(",");
+  Serial.print(a.acceleration.z);
+  Serial.print(",");
+  Serial.print(g.gyro.x);
+  Serial.print(",");
+  Serial.print(g.gyro.y);
+  Serial.print(",");
+  Serial.println(g.gyro.z);
+  // Serial.print("Temp:"); Serial.println(temp.temperature);
+  // Serial.print("Impact:"); Serial.println(impactSignal);
 
   delay(100); // Adjust delay as needed for smoother plotting
 }

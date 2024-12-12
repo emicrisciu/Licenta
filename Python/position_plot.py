@@ -4,9 +4,11 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
 # Configurarea portului serial
-ser = serial.Serial('COM6', 115200)  # Înlocuiește cu portul corect și viteza ta de transmisie
+uwb_ser = serial.Serial('COM6', 115200)
+mpu_ser = serial.Serial('COM3', 115200)
 
 pos_pattern = r"POS:\[(\d+),(\d+),(\d+),(\d+)\]"
+mpu_pattern = r"MPU:(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+)"
 
 # Configurarea graficului 2D
 fig, ax = plt.subplots()
@@ -28,33 +30,51 @@ def is_valid_data(x, y, z, qf):
 
 def update(frame):
     # Citește datele de la portul serial (presupunând că sunt în format X,Y,Z)
-    line = ser.readline().decode('utf-8').strip()
-    match = re.search(pos_pattern, line)
-    if match:
-        try:
-            # Extrage coordonatele X și Y
-            x = int(match.group(1))
-            y = int(match.group(2))
-            z = int(match.group(3))
-            qf = int(match.group(4))
-            # print(f"Tag Position: X={x}, Y={y}, Z={z}, QF={qf}")
-            
-            if is_valid_data(x, y, z, qf):
-                x_data.append(x)
-                y_data.append(y)
+    if uwb_ser.in_waiting:
+        uwb_line = uwb_ser.readline().decode('utf-8').strip()
+        uwb_match = re.search(pos_pattern, uwb_line)
+        if uwb_match:
+            try:
+                # Extrage coordonatele X și Y
+                x = int(uwb_match.group(1))
+                y = int(uwb_match.group(2))
+                z = int(uwb_match.group(3))
+                qf = int(uwb_match.group(4))
+                # print(f"Tag Position: X={x}, Y={y}, Z={z}, QF={qf}")
                 
-                # Limiteaza punctele de pe grafic 
-                if len(x_data) > 100:
-                    x_data.pop(0)
-                    y_data.pop(0)
+                if is_valid_data(x, y, z, qf):
+                    x_data.append(x)
+                    y_data.append(y)
+                    
+                    # Limiteaza punctele de pe grafic 
+                    if len(x_data) > 100:
+                        x_data.pop(0)
+                        y_data.pop(0)
 
-                # Actualizează graficul
-                sc.set_offsets(list(zip(x_data, y_data)))
-        except ValueError as e:
-            print(f"Parsing error: {e}")
+                    # Actualizează graficul
+                    sc.set_offsets(list(zip(x_data, y_data)))
+            except ValueError as e:
+                print(f"Parsing error: {e}")
+    
+    if mpu_ser.in_waiting:
+        mpu_line = mpu_ser.readline().decode('utf-8').strip()
+        mpu_match = re.search(mpu_pattern, mpu_line)
+        if mpu_match:
+            try:
+                ax = float(mpu_match.group(1))
+                ay = float(mpu_match.group(2))
+                az = float(mpu_match.group(3))
+                gx = float(mpu_match.group(4))
+                gy = float(mpu_match.group(5))
+                gz = float(mpu_match.group(6))
+                print(f"Accel: ({ax}, {ay}, {az}), Gyro: ({gx}, {gy}, {gz})")
+            except ValueError as e:
+                print(f"Parsing error: {e}")
+                
     return sc
 
 ani = FuncAnimation(fig, update, interval=100, cache_frame_data=False)
 plt.show()
 
-ser.close()
+uwb_ser.close()
+mpu_ser.close()
