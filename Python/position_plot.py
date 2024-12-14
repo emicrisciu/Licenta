@@ -9,7 +9,7 @@ import math
 uwb_ser = serial.Serial('COM6', 115200)
 mpu_ser = serial.Serial('COM3', 115200)
 
-pos_pattern = r"POS:\[(\d+),(\d+),(\d+),(\d+)\]"
+pos_pattern = r"POS:\[(-?\d+),(-?\d+),(-?\d+),(\d+)\]"
 mpu_pattern = r"MPU:(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+)"
 
 # Configurarea graficului 2D
@@ -27,14 +27,12 @@ ax.set_ylabel('Y (mm)')
 last_time = time.time()
 last_pos_x = 0
 last_pos_y = 0
-last_acc_x = 0
-last_acc_y = 0
-angle_x = 0
-angle_y = 0
+imu_dx = 0
+imu_dy = 0
 dt = 0.05  # Time step in seconds (adjust as needed)
 
 def is_valid_data(x, y, z, qf):
-    if qf < 50 or not (0 <= z):
+    if qf < 55 or not (0 <= z):
         return False
     return True
 
@@ -44,7 +42,7 @@ def is_goal(x, y, z, qf):
     return False
 
 def update(frame):
-    global last_time, last_pos_x, last_pos_y, angle_x, angle_y, dt, last_acc_x, last_acc_y
+    global last_time, last_pos_x, last_pos_y, imu_dx, imu_dy, dt
 
     current_time = time.time()
     dt = current_time - last_time
@@ -64,8 +62,11 @@ def update(frame):
                 
                 if is_valid_data(x, y, z, qf):
                     # Use UWB position as reference
-                    last_pos_x = x
-                    last_pos_y = y
+                    last_pos_x = x + imu_dx
+                    last_pos_y = y + imu_dy
+                    
+                    # Reset offsets
+                    imu_dx, imu_dy = 0, 0
                     
                     # Store the UWB coordinates
                     x_data.append(last_pos_x)
@@ -98,28 +99,10 @@ def update(frame):
             try:
                 ax = float(mpu_match.group(1))  # Accel X
                 ay = float(mpu_match.group(2))  # Accel Y
-                az = float(mpu_match.group(3))  # Accel Z
                 
-                # Use the IMU to adjust the orientation (angle)
-                # Example: Basic sensor fusion to adjust the position
-                angle_x += ax * dt  # Integrate to get orientation changes (simple method)
-                angle_y += ay * dt
-
-                # Refine UWB position based on accelerometer data
-                last_pos_x += ax * dt  # Adjust position based on accelerometer
-                last_pos_y += ay * dt
-
-                # Store the refined position from IMU adjustment
-                x_data.append(last_pos_x)
-                y_data.append(last_pos_y)
-                
-                # Limit the number of points plotted
-                if len(x_data) > 10:
-                    x_data.pop(0)
-                    y_data.pop(0)
-
-                # Update the scatter plot
-                sc.set_offsets(list(zip(x_data, y_data)))
+                # Calculate displacement using acceleration and time
+                imu_dx += ax * dt**2 / 2  # Δx = 0.5 * ax * dt^2
+                imu_dy += ay * dt**2 / 2  # Δy = 0.5 * ay * dt^2
                 
             except ValueError as e:
                 print(f"Parsing error: {e}")
@@ -127,7 +110,7 @@ def update(frame):
     return sc
 
 # Setup FuncAnimation
-ani = FuncAnimation(fig, update, interval=50, cache_frame_data=False)
+ani = FuncAnimation(fig, update, interval=5, cache_frame_data=False)
 plt.show()
 
 # Close serial connections
