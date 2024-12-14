@@ -34,11 +34,14 @@ angle_y = 0
 dt = 0.05  # Time step in seconds (adjust as needed)
 
 def is_valid_data(x, y, z, qf):
-    if qf < 50:
-        return False
-    if not (0 <= z):
+    if qf < 50 or not (0 <= z):
         return False
     return True
+
+def is_goal(x, y, z, qf):
+    if ((-100 <= x <= 100) or (900 <= x <= 1100)) and (150 <= y <= 350):
+        return True
+    return False
 
 def update(frame):
     global last_time, last_pos_x, last_pos_y, angle_x, angle_y, dt, last_acc_x, last_acc_y
@@ -68,6 +71,14 @@ def update(frame):
                     x_data.append(last_pos_x)
                     y_data.append(last_pos_y)
                     
+                    if is_goal(x, y, z, qf):
+                        print("G")
+                    else:
+                        if not (0 <= x <= 1000):
+                            print("P/C")
+                        if not (0 <= y <= 500):
+                            print("M")
+                    
                     # Limit the number of points plotted
                     if len(x_data) > 10:
                         x_data.pop(0)
@@ -75,6 +86,7 @@ def update(frame):
 
                     # Update the scatter plot with UWB data
                     sc.set_offsets(list(zip(x_data, y_data)))
+                
             except ValueError as e:
                 print(f"Parsing error: {e}")
     
