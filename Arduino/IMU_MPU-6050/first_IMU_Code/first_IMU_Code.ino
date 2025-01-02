@@ -155,7 +155,7 @@ void loop() {
     if (impactStartTime == 0) {
       impactStartTime = millis();
     } else if (millis() - impactStartTime > impactDuration) {
-      Serial.println("Confirmed Impact!");
+      //Serial.println("Confirmed Impact!");
       impactSignal = 100; // Assign a high value for visualization
       impactStartTime = 0; // Reset after detection
     }

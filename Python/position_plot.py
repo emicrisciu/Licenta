@@ -5,6 +5,7 @@ from matplotlib.patches import Rectangle, Circle, Arc
 from matplotlib.animation import FuncAnimation
 import time
 import math
+import numpy as np
 
 # Configurarea porturilor seriale
 uwb_ser = serial.Serial('COM6', 115200)
@@ -17,6 +18,8 @@ mpu_pattern = r"MPU:(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.
 fig, ax = plt.subplots()
 x_data, y_data = [], []
 sc = ax.scatter([], [], color='blue')  # Punctul de pe grafic
+
+qf = 100    # Inițialiare variabilă globală factor de calitate
 
 # Dimensiunile terenului
 field_length = 1000  # Lungimea terenului
@@ -38,6 +41,16 @@ ax.plot([field_length, field_length], [0, field_width], color='black')  # Linia 
 ax.plot([0, field_length], [0, 0], color='black')  # Linia de jos
 ax.plot([0, field_length], [field_width, field_width], color='black')  # Linia de sus
 ax.plot([field_length / 2, field_length / 2], [0, field_width], color='black')  # Linia de mijloc
+
+# Desenarea contururilor porților
+# Poarta stângă
+ax.plot([-45, 0], [200, 200], color='black', linewidth=0.8)
+ax.plot([-45, -45], [200, 300], color='black', linewidth=0.8)
+ax.plot([-45, 0], [300, 300], color='black', linewidth=0.8)
+# Poarta dreaptă
+ax.plot([field_length, field_length + 45], [200, 200], color='black', linewidth=0.8)
+ax.plot([field_length + 45, field_length + 45], [200, 300], color='black', linewidth=0.8)
+ax.plot([field_length, field_length + 45], [300, 300], color='black', linewidth=0.8)
 
 # Cercul de la centrul terenului
 center_circle = Circle((field_length / 2, field_width / 2), 75, edgecolor='black', facecolor='none', linestyle='-')
@@ -94,54 +107,91 @@ ax.add_patch(corner_zone_up_right)
 ax.add_patch(corner_zone_down_right)
 ax.add_patch(corner_zone_right)
 
-# Variabile pentru integrarea datelor provenite de la IMU
-last_time = time.time()
-last_pos_x = 0
-last_pos_y = 0
-imu_dx = 0
-imu_dy = 0
-dt = 0.05  # Pasul de timp în secunde
+# Zone care se suprapun cu porțile dar corespund zonelor de deasupra porților (ținem cont de coordonata Z)
+above_goal_zone_left = Rectangle((-60, 185), 60, 130, color='orange', alpha=0.2)
+above_goal_zone_right = Rectangle((1000, 185), 60, 130, color='orange', alpha=0.2)
+ax.add_patch(above_goal_zone_left)
+ax.add_patch(above_goal_zone_right)
+
+# Filtru Kalman
+dt = 0.05   # Pasul de timp (50 ms între măsurători)
+A = np.array([[1, 0, dt, 0],
+              [0, 1, 0, dt],
+              [0, 0, 1, 0],
+              [0, 0, 0, 1]])
+B = np.array([[0.5 * dt**2, 0],
+              [0, 0.5 * dt**2],
+              [dt, 0],
+              [0, dt]])
+H = np.array([[1, 0, 0, 0],
+              [0, 1, 0, 0]])
+x = np.zeros((4, 1))  # Starea inițială: [x, y, vx, vy]
+P = np.eye(4) * 500  # Matricea de covarianță a erorii
+Q = np.eye(4) * 0.1  # Zgomotul procesului
+R = np.eye(2) * 10   # Zgomotul măsurătorilor
+
+def kalman_filter(x, P, z, u):
+    # Predict
+    x_pred = A @ x + B @ u
+    P_pred = A @ P @ A.T + Q
+    
+    # Update
+    y = z - H @ x_pred  # Inovația
+    S = H @ P_pred @ H.T + R    # Covarianța inovației
+    K = P_pred @ H.T @ np.linalg.inv(S) # Câștigul Kalman
+    
+    x_updated = x_pred + K @ y
+    P_updated = (np.eye(4) - K @ H) @ P_pred
+    
+    return x_updated, P_updated
 
 # Funcții pentru validarea zonelor specifice în care se află mingea
-def is_valid_data(x, y, z, qf):
-    return qf < 55 or not (0 <= z)
+def is_valid_data(qf):
+    return qf >= 50
 
-def is_goal_left(x, y, z, qf):
+def is_goal_left(x, y):
     return (-60 <= x <= 60) and (185 <= y <= 315)
 
-def is_goal_right(x, y, z, qf):
+def is_goal_right(x, y):
     return (940 <= x <= 1060) and (185 <= y <= 315)
 
-def is_out_up(x, y, z, qf):
+def is_out_up(x, y):
     return (0 <= x <= 1000) and (500 <= y)
 
-def is_out_down(x, y, z, qf):
+def is_out_down(x, y):
     return (0 <= x <= 1000) and (0 >= y)
 
-def is_corner_up_left(x, y, z, qf):
+def is_corner_up_left(x, y):
     return (-60 <= x <= 0) and (315 <= y <= 500)
 
-def is_corner_down_left(x, y, z, qf):
+def is_corner_down_left(x, y):
     return (-60 <= x <= 0) and (0 <= y <= 185)
 
-def is_corner_up_right(x, y, z, qf):
+def is_corner_up_right(x, y):
     return (1000 <= x <= 1060) and (315 <= y <= 500)
 
-def is_corner_down_right(x, y, z, qf):
+def is_corner_down_right(x, y):
     return (1000 <= x <= 1060) and (0 <= y <= 185)
 
-def is_corner_left(x, y, z, qf):
+def is_corner_left(x, y):
     return (-100 <= x <= -60) and (0 <= y <= 500)
 
-def is_corner_right(x, y, z, qf):
+def is_corner_right(x, y):
     return (1060 <= x <= 1100) and (0 <= y <= 500)
 
-def update(frame):
-    global last_time, last_pos_x, last_pos_y, imu_dx, imu_dy, dt
+def is_above_goal_left(x, y, z):
+    return (-60 <= x <= 0) and (185 <= y <= 315) and (z >= 250)
 
-    current_time = time.time()
-    dt = current_time - last_time
-    last_time = current_time
+def is_above_goal_right(x, y, z):
+    return (1000 <= x <= 1060) and (185 <= y <= 315) and (z >= 250)
+
+uwb_z = 0
+
+def update(frame):
+    global x, P, qf, uwb_z
+    
+    z = None    # Poziția UWB implicită (inexistentă)
+    u = np.zeros((2, 1))    # Intrarea IMU implicită (zero)
 
     # Citește datele de la portul serial (UWB)
     if uwb_ser.in_waiting:
@@ -150,81 +200,11 @@ def update(frame):
         if uwb_match:
             try:
                 # Extrage coordonatele tag-ului UWB (x, y)
-                x = int(uwb_match.group(1))
-                y = int(uwb_match.group(2))
-                z = int(uwb_match.group(3))
+                uwb_x = int(uwb_match.group(1))
+                uwb_y = int(uwb_match.group(2))
+                uwb_z = int(uwb_match.group(3))
                 qf = int(uwb_match.group(4))
-                
-                if is_valid_data(x, y, z, qf):
-                    # Folosește poziția tag-ului UWB ca referință
-                    last_pos_x = x + imu_dx
-                    last_pos_y = y + imu_dy
-                    
-                    # Resetează offset-urile
-                    imu_dx, imu_dy = 0, 0
-                    
-                    # Stochează coordonatele noului punct validat
-                    x_data.append(last_pos_x)
-                    y_data.append(last_pos_y)
-                    
-                    # Resetează transparența tuturor zonelor de interes
-                    goal_zone_left.set_alpha(0.2)
-                    goal_zone_right.set_alpha(0.2)
-                    out_zone_up.set_alpha(0.2)
-                    out_zone_down.set_alpha(0.2)
-                    corner_zone_up_left.set_alpha(0.2)
-                    corner_zone_down_left.set_alpha(0.2)
-                    corner_zone_up_right.set_alpha(0.2)
-                    corner_zone_down_right.set_alpha(0.2)
-                    corner_zone_left.set_alpha(0.2)
-                    corner_zone_right.set_alpha(0.2)
-                    
-                    # Verifică dacă mingea a depășit anumite zone și marchează / evidențiază acest lucru
-                    if is_goal_left(x, y, z, qf):
-                        # print("G")
-                        goal_zone_left.set_alpha(0.7)
-                    else:
-                        if is_goal_right(x, y, z, qf):
-                            # print("G")
-                            goal_zone_right.set_alpha(0.7)
-                        else:
-                            if is_corner_up_left(x, y, z, qf):
-                                # print("P/C")
-                                corner_zone_up_left.set_alpha(0.7)
-                            else:
-                                if is_corner_down_left(x, y, z, qf):
-                                    # print("P/C")
-                                    corner_zone_down_left.set_alpha(0.7)
-                                else:
-                                    if is_corner_up_right(x, y, z, qf):
-                                        # print("P/C")
-                                        corner_zone_up_right.set_alpha(0.7)
-                                    else:
-                                        if is_corner_down_right(x, y, z, qf):
-                                            # print("P/C")
-                                            corner_zone_down_right.set_alpha(0.7)
-                                        else:
-                                            if is_corner_left(x, y, z, qf):
-                                                corner_zone_left.set_alpha(0.7)
-                                            else:
-                                                if is_corner_right(x, y, z, qf):
-                                                    corner_zone_right.set_alpha(0.7)
-                                                else:
-                                                    if is_out_up(x, y, z, qf):
-                                                        # print("M")
-                                                        out_zone_up.set_alpha(0.7)
-                                                    else:
-                                                        if is_out_down(x, y, z, qf):
-                                                            # print("M")
-                                                            out_zone_down.set_alpha(0.7)
-                            
-                    # Limitează numărul de puncte ce sunt desenate pe grafic pentru a nu încărca memoria și desenul
-                    if len(x_data) > 10:
-                        x_data.pop(0)
-                        y_data.pop(0)
-
-                    # Se updatează plotul cu punctele procesate
-                    sc.set_offsets(list(zip(x_data, y_data)))
+                z = np.array([uwb_x, uwb_y]).reshape((2, 1))
                 
             except ValueError as e:
                 print(f"Parsing error: {e}")
@@ -237,14 +217,91 @@ def update(frame):
             try:
                 ax = float(mpu_match.group(1))  # Accel X
                 ay = float(mpu_match.group(2))  # Accel Y
-                
-                # Calculează deplasamentul folosind accelerația și timpul
-                imu_dx += ax * dt**2 / 2  # Δx = 0.5 * ax * dt^2
-                imu_dy += ay * dt**2 / 2  # Δy = 0.5 * ay * dt^2
+                u = np.array([ax, ay]).reshape((2, 1))
                 
             except ValueError as e:
                 print(f"Parsing error: {e}")
                 
+    # Aplică filtrul Kalman
+    if z is not None:
+        x, P = kalman_filter(x, P, z, u)
+        
+    if is_valid_data(qf):
+        # Adaugă poziția estimată la grafic
+        x_data.append(x[0, 0])  # Poziția estimată X
+        y_data.append(x[1, 0])  # Poziția estimată Y
+        
+        # Resetează transparența tuturor zonelor de interes
+        goal_zone_left.set_alpha(0.2)
+        goal_zone_right.set_alpha(0.2)
+        out_zone_up.set_alpha(0.2)
+        out_zone_down.set_alpha(0.2)
+        corner_zone_up_left.set_alpha(0.2)
+        corner_zone_down_left.set_alpha(0.2)
+        corner_zone_up_right.set_alpha(0.2)
+        corner_zone_down_right.set_alpha(0.2)
+        corner_zone_left.set_alpha(0.2)
+        corner_zone_right.set_alpha(0.2)
+        above_goal_zone_left.set_alpha(0.2)
+        above_goal_zone_right.set_alpha(0.2)
+        
+        # print(f"x = {x[0, 0]}, y = {x[1, 0]}, z = {uwb_z}")
+        
+        # Verifică dacă mingea a depășit anumite zone și marchează / evidențiază acest lucru
+        if is_above_goal_left(x[0, 0], x[1, 0], uwb_z):
+            # print("PP")   # peste poartă
+            above_goal_zone_left.set_alpha(0.7)
+        else:
+            if is_above_goal_right(x[0, 0], x[1, 0], uwb_z):
+                # print("PP")
+                above_goal_zone_right.set_alpha(0.7)
+            else:
+                if is_goal_left(x[0, 0], x[1, 0]):
+                    # print("G")
+                    goal_zone_left.set_alpha(0.7)
+                else:
+                    if is_goal_right(x[0, 0], x[1, 0]):
+                        # print("G")
+                        goal_zone_right.set_alpha(0.7)
+                    else:
+                        if is_corner_up_left(x[0, 0], x[1, 0]):
+                            # print("P/C")
+                            corner_zone_up_left.set_alpha(0.7)
+                        else:
+                            if is_corner_down_left(x[0, 0], x[1, 0]):
+                                # print("P/C")
+                                corner_zone_down_left.set_alpha(0.7)
+                            else:
+                                if is_corner_up_right(x[0, 0], x[1, 0]):
+                                    # print("P/C")
+                                    corner_zone_up_right.set_alpha(0.7)
+                                else:
+                                    if is_corner_down_right(x[0, 0], x[1, 0]):
+                                        # print("P/C")
+                                        corner_zone_down_right.set_alpha(0.7)
+                                    else:
+                                        if is_corner_left(x[0, 0], x[1, 0]):
+                                            corner_zone_left.set_alpha(0.7)
+                                        else:
+                                            if is_corner_right(x[0, 0], x[1, 0]):
+                                                corner_zone_right.set_alpha(0.7)
+                                            else:
+                                                if is_out_up(x[0, 0], x[1, 0]):
+                                                    # print("M")
+                                                    out_zone_up.set_alpha(0.7)
+                                                else:
+                                                    if is_out_down(x[0, 0], x[1, 0]):
+                                                        # print("M")
+                                                        out_zone_down.set_alpha(0.7)
+                
+        # Limitează numărul de puncte ce sunt desenate pe grafic pentru a nu încărca memoria și desenul
+        if len(x_data) > 10:
+            x_data.pop(0)
+            y_data.pop(0)
+
+        # Se updatează plotul cu punctele procesate
+        sc.set_offsets(list(zip(x_data, y_data)))
+         
     return sc
 
 # Setează FuncAnimation pentru a actualiza în timp real graficul
