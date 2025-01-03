@@ -119,8 +119,8 @@ void app_thread_entry(uint32_t data)
 	/* Get node configuration */
 	APP_ERR_CHECK(dwm_cfg_get(&cfg));
 
-	/* Update rate set to 100 ms, stationary update rate set to 300 ms */
-	APP_ERR_CHECK(dwm_upd_rate_set(DWM_UPD_RATE_MIN, 3 * DWM_UPD_RATE_MIN));
+	/* Update rate set to 100 ms, stationary update rate also set to 100 ms for consistency */
+	APP_ERR_CHECK(dwm_upd_rate_set(DWM_UPD_RATE_MIN, DWM_UPD_RATE_MIN));
 
 	/* Sensitivity for switching between stationary and normal update rate */
 	APP_ERR_CHECK(dwm_stnry_cfg_set(DWM_STNRY_SENSITIVITY_HIGH));

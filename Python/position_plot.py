@@ -6,6 +6,8 @@ from matplotlib.animation import FuncAnimation
 import time
 import math
 import numpy as np
+import threading
+from queue import Queue
 
 # Configurarea porturilor seriale
 uwb_ser = serial.Serial('COM6', 115200)
@@ -14,10 +16,35 @@ mpu_ser = serial.Serial('COM3', 115200)
 pos_pattern = r"POS:\[(-?\d+),(-?\d+),(-?\d+),(\d+)\]"
 mpu_pattern = r"MPU:(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+)"
 
+uwb_data_queue = Queue()
+mpu_data_queue = Queue()
+
+def read_uwb_serial():
+    while True:
+        if uwb_ser.in_waiting:
+            line = uwb_ser.readline().decode('utf-8').strip()
+            uwb_data_queue.put(line)
+
+def read_mpu_serial():
+    while True:
+        if mpu_ser.in_waiting:
+            line = mpu_ser.readline().decode('utf-8').strip()
+            mpu_data_queue.put(line)
+            
+# Start thread-uri
+threading.Thread(target=read_uwb_serial, daemon=True).start()
+threading.Thread(target=read_mpu_serial, daemon=True).start()
+
 # Configurarea graficului 2D
 fig, ax = plt.subplots()
 x_data, y_data = [], []
 sc = ax.scatter([], [], color='blue')  # Punctul de pe grafic
+# line, = ax.plot([], [], 'bo', markersize=5)
+
+# def init():
+#     ax.set_xlim(-100, field_length + 100)  # Voi desena terenul mai lung decât în mod normal pentru a observa și zona din spatele porții
+#     ax.set_ylim(-50, field_width + 50) # Voi desena terenul mai lat decât în mod normal pentru a observa și zona auturilor
+#     return line,
 
 qf = 100    # Inițialiare variabilă globală factor de calitate
 
@@ -194,8 +221,8 @@ def update(frame):
     u = np.zeros((2, 1))    # Intrarea IMU implicită (zero)
 
     # Citește datele de la portul serial (UWB)
-    if uwb_ser.in_waiting:
-        uwb_line = uwb_ser.readline().decode('utf-8').strip()
+    if not uwb_data_queue.empty():
+        uwb_line = uwb_data_queue.get()
         uwb_match = re.search(pos_pattern, uwb_line)
         if uwb_match:
             try:
@@ -210,8 +237,8 @@ def update(frame):
                 print(f"Parsing error: {e}")
     
     # Citește datele de la portul serial (MPU)
-    if mpu_ser.in_waiting:
-        mpu_line = mpu_ser.readline().decode('utf-8').strip()
+    if not mpu_data_queue.empty():
+        mpu_line = mpu_data_queue.get()
         mpu_match = re.search(mpu_pattern, mpu_line)
         if mpu_match:
             try:
@@ -301,11 +328,14 @@ def update(frame):
 
         # Se updatează plotul cu punctele procesate
         sc.set_offsets(list(zip(x_data, y_data)))
+        # line.set_xdata(x_data)
+        # line.set_ydata(y_data)
          
+    #return line,
     return sc
 
 # Setează FuncAnimation pentru a actualiza în timp real graficul
-ani = FuncAnimation(fig, update, interval=5, cache_frame_data=False)
+ani = FuncAnimation(fig, update, interval=100, cache_frame_data=False)
 plt.show()
 
 # Închide conexiunile seriale
