@@ -335,7 +335,7 @@ def update(frame):
     return sc
 
 # Setează FuncAnimation pentru a actualiza în timp real graficul
-ani = FuncAnimation(fig, update, interval=100, cache_frame_data=False)
+ani = FuncAnimation(fig, update, interval=5, cache_frame_data=False)
 plt.show()
 
 # Închide conexiunile seriale
