@@ -91,13 +91,47 @@
       linker_section_placements_segments="FLASH RX 0x00000000 0x00080000;SRAM RWX 0x20000000 0x00010000"
       project_type="Externally Built Executable" />
     <folder Name="Header">
+      <file file_name="../../nordicsemi/components/libraries/util/app_util.h" />
+      <file file_name="../../nordicsemi/components/softdevice/s130/headers/ble.h" />
+      <file file_name="../../nordicsemi/components/ble/common/ble_advdata.h" />
+      <file file_name="../../nordicsemi/components/ble/ble_advertising/ble_advertising.h" />
+      <file file_name="../../nordicsemi/components/softdevice/s130/headers/ble_err.h" />
+      <file file_name="../../nordicsemi/components/softdevice/s130/headers/ble_gap.h" />
+      <file file_name="../../nordicsemi/components/softdevice/s130/headers/ble_gatt.h" />
+      <file file_name="../../nordicsemi/components/softdevice/s130/headers/ble_gattc.h" />
+      <file file_name="../../nordicsemi/components/softdevice/s130/headers/ble_gatts.h" />
+      <file file_name="../../nordicsemi/components/softdevice/s130/headers/ble_l2cap.h" />
+      <file file_name="../../nordicsemi/components/softdevice/s130/headers/ble_ranges.h" />
+      <file file_name="../../nordicsemi/components/softdevice/s130/headers/ble_types.h" />
+      <file file_name="../../nordicsemi/components/toolchain/cmsis/include/cmsis_gcc.h" />
+      <file file_name="../../nordicsemi/components/device/compiler_abstraction.h" />
+      <file file_name="../../nordicsemi/components/toolchain/cmsis/include/core_cm4.h" />
+      <file file_name="../../nordicsemi/components/toolchain/cmsis/include/core_cmFunc.h" />
+      <file file_name="../../nordicsemi/components/toolchain/cmsis/include/core_cmInstr.h" />
+      <file file_name="../../nordicsemi/components/toolchain/cmsis/include/core_cmSimd.h" />
       <file file_name="../../include/dwm.h" />
+      <file file_name="../../nordicsemi/components/libraries/fstorage/fstorage.h" />
+      <file file_name="../../nordicsemi/components/libraries/util/nordic_common.h" />
+      <file file_name="../../nordicsemi/components/device/nrf.h" />
+      <file file_name="../../nordicsemi/components/device/nrf51_to_nrf52.h" />
+      <file file_name="../../nordicsemi/components/device/nrf52.h" />
+      <file file_name="../../nordicsemi/components/device/nrf52_bitfields.h" />
+      <file file_name="../../nordicsemi/components/device/nrf52_name_change.h" />
+      <file file_name="../../nordicsemi/components/softdevice/s130/headers/nrf_error.h" />
+      <file file_name="../../nordicsemi/components/libraries/log/nrf_log.h" />
+      <file file_name="../../nordicsemi/components/libraries/log/src/nrf_log_internal.h" />
+      <file file_name="../../nordicsemi/components/softdevice/s130/headers/nrf_soc.h" />
+      <file file_name="../../nordicsemi/components/softdevice/s130/headers/nrf_svc.h" />
+      <file file_name="../dwm-uart/sdk_config.h" />
+      <file file_name="../../nordicsemi/components/libraries/util/sdk_errors.h" />
+      <file file_name="../../nordicsemi/components/toolchain/system_nrf52.h" />
     </folder>
     <folder Name="Internal">
       <file file_name="dwm.o" />
       <file file_name="libdwm.a" />
     </folder>
     <folder Name="Source">
+      <file file_name="../../nordicsemi/components/ble/ble_advertising/ble_advertising.c" />
       <file file_name="dwm-simple.c" />
     </folder>
   </project>

@@ -3,8 +3,10 @@
 #include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
 #include <Wire.h>
+#include <BluetoothSerial.h>
 
 Adafruit_MPU6050 mpu;
+BluetoothSerial SerialBT;
 
 const float accelThreshold = 15.0; // Adjust based on testing
 const float gyroThreshold = 200.0; // Adjust based on testing
@@ -25,6 +27,8 @@ const unsigned long impactDuration = 50; // 50ms to confirm impact
 
 void setup(void) {
   Serial.begin(115200);
+  SerialBT.begin("ESP32");
+
   while (!Serial)
     delay(10); // will pause Zero, Leonardo, etc until serial console opens
 
@@ -163,19 +167,43 @@ void loop() {
     impactStartTime = 0; // Reset if conditions aren't met
   }
 
+  String output = "";
+  while(Serial.available() > 0)
+  {
+    char receivedChar = (char)Serial.read();
+    output += receivedChar;
+  }
+
+  Serial.println(output);
+  SerialBT.print(output);
+
   // Print values with labels for Arduino Serial Plotter
-  Serial.print("MPU:");
-  Serial.print(a.acceleration.x);
-  Serial.print(",");
-  Serial.print(a.acceleration.y);
-  Serial.print(",");
-  Serial.print(a.acceleration.z);
-  Serial.print(",");
-  Serial.print(g.gyro.x);
-  Serial.print(",");
-  Serial.print(g.gyro.y);
-  Serial.print(",");
-  Serial.println(g.gyro.z);
+  output = "MPU:";
+  output += a.acceleration.x;
+  output += ",";
+  output += a.acceleration.y;
+  output += ",";
+  output += a.acceleration.z;
+  output += ",";
+  output += g.gyro.x;
+  output += ",";
+  output += g.gyro.y;
+  output += ",";
+  output += g.gyro.z;
+  Serial.println(output);
+  SerialBT.print(output);
+  // Serial.print("MPU:");
+  // Serial.print(a.acceleration.x);
+  // Serial.print(",");
+  // Serial.print(a.acceleration.y);
+  // Serial.print(",");
+  // Serial.print(a.acceleration.z);
+  // Serial.print(",");
+  // Serial.print(g.gyro.x);
+  // Serial.print(",");
+  // Serial.print(g.gyro.y);
+  // Serial.print(",");
+  // Serial.println(g.gyro.z);
   // Serial.print("Temp:"); Serial.println(temp.temperature);
   // Serial.print("Impact:"); Serial.println(impactSignal);
 

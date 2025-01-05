@@ -8,10 +8,23 @@ import math
 import numpy as np
 import threading
 from queue import Queue
+import bluetooth
+import socket
+
+SOCKET_PORT = 5000
 
 # Configurarea porturilor seriale
-uwb_ser = serial.Serial('COM6', 115200)
-mpu_ser = serial.Serial('COM3', 115200)
+# uwb_ser = serial.Serial('COM6', 115200)
+# mpu_ser = serial.Serial('COM3', 115200)
+
+uwb_addr = "C0:59:C9:08:D6:4B" # insert tag MAC address here
+mpu_addr = "A0:A3:B3:97:4B:62"
+
+#uwb_socket = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
+mpu_socket = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
+
+#uwb_socket.connect((uwb_addr, 1)) # ask chatgpt about this line here
+mpu_socket.connect((mpu_addr, 1))
 
 pos_pattern = r"POS:\[(-?\d+),(-?\d+),(-?\d+),(\d+)\]"
 mpu_pattern = r"MPU:(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+)"
@@ -19,21 +32,45 @@ mpu_pattern = r"MPU:(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.
 uwb_data_queue = Queue()
 mpu_data_queue = Queue()
 
-def read_uwb_serial():
-    while True:
-        if uwb_ser.in_waiting:
-            line = uwb_ser.readline().decode('utf-8').strip()
-            uwb_data_queue.put(line)
+#client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+#client_socket.connect(('localhost', SOCKET_PORT))
 
-def read_mpu_serial():
+def read_socket():    
     while True:
-        if mpu_ser.in_waiting:
-            line = mpu_ser.readline().decode('utf-8').strip()
-            mpu_data_queue.put(line)
+        data = client_socket.recv(1024).decode('utf-8').strip
+        if data:
+            uwb_data_queue.put(data)
+            print(data)
+    
+
+#def read_uwb_serial():
+ #   while True:
+  #      if uwb_ser.in_waiting:
+   #         line = uwb_ser.readline().decode('utf-8').strip()
+    #        uwb_data_queue.put(line)
+    
+def read_uwb_bluetooth():
+    while True:
+        data = uwb_socket.recv(1024).decode('utf-8').strip()
+        uwb_data_queue.put(data)
+
+# def read_mpu_serial():
+#     while True:
+#         if mpu_ser.in_waiting:
+#             line = mpu_ser.readline().decode('utf-8').strip()
+#             mpu_data_queue.put(line)
+            
+def read_mpu_bluetooth():
+    while True:
+        data = mpu_socket.recv(1024).decode('utf-8').strip()
+        print(data)
+        mpu_data_queue.put(data)
+        uwb_data_queue.put(data)            
             
 # Start thread-uri
-threading.Thread(target=read_uwb_serial, daemon=True).start()
-threading.Thread(target=read_mpu_serial, daemon=True).start()
+#threading.Thread(target=read_uwb_bluetooth, daemon=True).start()
+threading.Thread(target=read_mpu_bluetooth, daemon=True).start()
+#threading.Thread(target=read_socket, daemon=True).start()
 
 # Configurarea graficului 2D
 fig, ax = plt.subplots()
@@ -231,6 +268,7 @@ def update(frame):
                 uwb_y = int(uwb_match.group(2))
                 uwb_z = int(uwb_match.group(3))
                 qf = int(uwb_match.group(4))
+                #print(f"x = {uwb_x}, y = {uwb_y}, z = {uwb_z}, qf = {qf}")
                 z = np.array([uwb_x, uwb_y]).reshape((2, 1))
                 
             except ValueError as e:
@@ -244,6 +282,7 @@ def update(frame):
             try:
                 ax = float(mpu_match.group(1))  # Accel X
                 ay = float(mpu_match.group(2))  # Accel Y
+                #print(f"ax = {ax}, ay = {ay}")
                 u = np.array([ax, ay]).reshape((2, 1))
                 
             except ValueError as e:
@@ -339,5 +378,8 @@ ani = FuncAnimation(fig, update, interval=5, cache_frame_data=False)
 plt.show()
 
 # Închide conexiunile seriale
-uwb_ser.close()
-mpu_ser.close()
+#uwb_ser.close()
+# mpu_ser.close()
+uwb_socket.close()
+mpu_socket.close()
+#client_socket.close()
