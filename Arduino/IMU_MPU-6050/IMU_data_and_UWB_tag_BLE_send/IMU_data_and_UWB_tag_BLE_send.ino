@@ -1,5 +1,3 @@
-// Basic demo for accelerometer readings from Adafruit MPU6050
-
 #include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
 #include <Wire.h>
@@ -8,33 +6,21 @@
 Adafruit_MPU6050 mpu;
 BluetoothSerial SerialBT;
 
-const float accelThreshold = 15.0; // Adjust based on testing
-const float gyroThreshold = 200.0; // Adjust based on testing
+const float accelThreshold = 15.0; // Pragul accelerației folosit la detectarea unui impact cu mingea
+const float gyroThreshold = 200.0; // Pragul rotației folosit la detectarea unui impact cu mingea
 unsigned long impactStartTime = 0;
-const unsigned long impactDuration = 50; // 50ms to confirm impact
-
-// Variables for position, velocity, and time tracking
-// float posX = 0, posY = 0, posZ = 0; // Position
-// float velX = 0, velY = 0, velZ = 0; // Velocity
-// unsigned long lastTime;
-// float deltaTime;
-
-// float pitch = 0.0;
-// float roll = 0.0;
-// float alpha = 0.98; // Complementary filter weight
-
-// float driftThreshold = 0.1; // Adjust based on sensor noise level
+const unsigned long impactDuration = 50; // 50ms = timpul în care se confirmă impactul
 
 void setup(void) {
   Serial.begin(115200);
   SerialBT.begin("ESP32");
 
   while (!Serial)
-    delay(10); // will pause Zero, Leonardo, etc until serial console opens
+    delay(10); // Se așteaptă deschiderea conexiunii seriale
 
   Serial.println("Adafruit MPU6050 test!");
 
-  // Try to initialize!
+  // Inițializarea IMU-ului
   if (!mpu.begin()) {
     Serial.println("Failed to find MPU6050 chip");
     while (1) {
@@ -43,7 +29,7 @@ void setup(void) {
   }
   Serial.println("MPU6050 Found!");
 
-  mpu.setAccelerometerRange(MPU6050_RANGE_2_G);  // am setat pe 2G range-ul pt a masura diferente mai discrete
+  mpu.setAccelerometerRange(MPU6050_RANGE_2_G);  // Am setat pe 2G range-ul accelerației pentru a măsura diferențe mai discrete
   Serial.print("Accelerometer range set to: ");
   switch (mpu.getAccelerometerRange()) {
   case MPU6050_RANGE_2_G:
@@ -59,7 +45,7 @@ void setup(void) {
     Serial.println("+-16G");
     break;
   }
-  mpu.setGyroRange(MPU6050_RANGE_250_DEG);  // la fel ca mai sus
+  mpu.setGyroRange(MPU6050_RANGE_250_DEG);  // La fel ca mai sus, am setat range-ul la valoarea minimă și pentru rotație
   Serial.print("Gyro range set to: ");
   switch (mpu.getGyroRange()) {
   case MPU6050_RANGE_250_DEG:
@@ -107,66 +93,35 @@ void setup(void) {
 }
 
 void loop() {
-
-  // /* Get new sensor events with the readings */
-  // sensors_event_t a, g, temp;
-  // mpu.getEvent(&a, &g, &temp);
-
-  // /* Print out the values */
-  // Serial.print("Acceleration X: ");
-  // Serial.print(a.acceleration.x);
-  // Serial.print(", Y: ");
-  // Serial.print(a.acceleration.y);
-  // Serial.print(", Z: ");
-  // Serial.print(a.acceleration.z);
-  // Serial.println(" m/s^2");
-
-  // Serial.print("Rotation X: ");
-  // Serial.print(g.gyro.x);
-  // Serial.print(", Y: ");
-  // Serial.print(g.gyro.y);
-  // Serial.print(", Z: ");
-  // Serial.print(g.gyro.z);
-  // Serial.println(" rad/s");
-
-  // Serial.print("Temperature: ");
-  // Serial.print(temp.temperature);
-  // Serial.println(" degC");
-
-  // Serial.println("");
-  // delay(250);
-
-
-
-
-  // Get new sensor events with the readings
+  // Se citesc evenimente înregistrate de senzor
   sensors_event_t a, g, temp;
   mpu.getEvent(&a, &g, &temp);
 
-   // Calculate acceleration magnitude
+   // Se calculează magnitudinea (valoarea) accelerației
   float accelMagnitude = sqrt(a.acceleration.x * a.acceleration.x +
                                a.acceleration.y * a.acceleration.y +
                                a.acceleration.z * a.acceleration.z);
 
-  // Calculate gyro magnitude (optional)
+  // Se calculează magnitudinea rotației
   float gyroMagnitude = sqrt(g.gyro.x * g.gyro.x +
                               g.gyro.y * g.gyro.y +
                               g.gyro.z * g.gyro.z);
 
-   // Detect impact
-  float impactSignal = 0; // Default to 0 (no impact)
+  // Detectarea impactului
+  float impactSignal = 0; // 0 înseamnă că nu avem impact
   if (accelMagnitude > accelThreshold || gyroMagnitude > gyroThreshold) {
     if (impactStartTime == 0) {
       impactStartTime = millis();
     } else if (millis() - impactStartTime > impactDuration) {
       //Serial.println("Confirmed Impact!");
-      impactSignal = 100; // Assign a high value for visualization
-      impactStartTime = 0; // Reset after detection
+      impactSignal = 100; // Se atribuie o valoare mare semnalului pentru a putea fi observat mai ușor în grafice
+      impactStartTime = 0; // Resetăm după detecție
     }
   } else {
-    impactStartTime = 0; // Reset if conditions aren't met
+    impactStartTime = 0; // Resetăm și dacă nu se îndeplinesc condițiile
   }
 
+  // Se construiește mesajul ce va conține date de la tag-ul UWB, precum poziția în spațiu
   String output = "";
   while(Serial.available() > 0)
   {
@@ -174,10 +129,10 @@ void loop() {
     output += receivedChar;
   }
 
-  Serial.println(output);
-  SerialBT.print(output);
+  Serial.println(output); // Se afișează pe serial monitor pentru a verifica corectitudinea
+  SerialBT.print(output); // Se trimite mesajul construit prin BLE către RaspberryPi
 
-  // Print values with labels for Arduino Serial Plotter
+  // Se construiește mesajul cu date provenite de la IMU
   output = "MPU:";
   output += a.acceleration.x;
   output += ",";
@@ -190,22 +145,8 @@ void loop() {
   output += g.gyro.y;
   output += ",";
   output += g.gyro.z;
-  Serial.println(output);
-  SerialBT.print(output);
-  // Serial.print("MPU:");
-  // Serial.print(a.acceleration.x);
-  // Serial.print(",");
-  // Serial.print(a.acceleration.y);
-  // Serial.print(",");
-  // Serial.print(a.acceleration.z);
-  // Serial.print(",");
-  // Serial.print(g.gyro.x);
-  // Serial.print(",");
-  // Serial.print(g.gyro.y);
-  // Serial.print(",");
-  // Serial.println(g.gyro.z);
-  // Serial.print("Temp:"); Serial.println(temp.temperature);
-  // Serial.print("Impact:"); Serial.println(impactSignal);
+  Serial.println(output); // Se afișează pe serial monitor pentru a verifica corectitudinea
+  SerialBT.print(output); // Se trimite mesajul construit prin BLE către RaspberryPi
 
-  delay(100); // Adjust delay as needed for smoother plotting
+  delay(100); // Delay de 100ms între măsurători pentru a ne sincroniza cu restul senzorilor utilizați (ex: tag UWB)
 }

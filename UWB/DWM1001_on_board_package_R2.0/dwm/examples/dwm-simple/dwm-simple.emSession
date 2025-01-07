@@ -56,11 +56,8 @@
   <Watches active="0" update="Never"/>
  </Watch4>
  <Files>
-  <SessionOpenFile windowGroup="DockEditLeft" x="61" y="170" useTextEdit="1" path="dwm-simple.c" left="0" top="156" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="64" y="170" useTextEdit="1" path="dwm-simple.c" left="0" selected="1" top="159" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="0" useTextEdit="1" path="../../include/dwm.h" left="0" top="0" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="21" y="29" useTextEdit="1" path="../../nordicsemi/components/ble/ble_advertising/ble_advertising.c" left="0" top="93" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="43" y="130" useTextEdit="1" path="../../nordicsemi/components/ble/ble_advertising/ble_advertising.h" left="0" top="27" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="1" y="625" useTextEdit="1" path="../../nordicsemi/components/softdevice/s130/headers/ble.h" left="0" selected="1" top="614" codecName="Default"/>
  </Files>
- <EMStudioWindow activeProject="dwm-simple" fileDialogDefaultFilter="*.h" autoConnectTarget="J-Link" buildConfiguration="dwm1001_configuration" sessionSettings="" debugSearchFileMap="" fileDialogInitialDirectory="C:/Repo_Licenta/UWB/DWM1001_on_board_package_R2.0/dwm/nordicsemi/components/softdevice/s130/headers" debugSearchPath="" autoConnectCapabilities="3711"/>
+ <EMStudioWindow activeProject="dwm-simple" fileDialogDefaultFilter="*.h" autoConnectTarget="J-Link" buildConfiguration="dwm1001_configuration" sessionSettings="" debugSearchFileMap="" fileDialogInitialDirectory="C:/Repo_Licenta/UWB/DWM1001_on_board_package_R2.0/dwm/nordicsemi/components/softdevice/s130/headers" debugSearchPath="" autoConnectCapabilities="3199"/>
 </session>

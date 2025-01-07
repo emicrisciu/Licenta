@@ -9,68 +9,34 @@ import numpy as np
 import threading
 from queue import Queue
 import bluetooth
-import socket
 
-SOCKET_PORT = 5000
+esp_addr = "A0:A3:B3:97:4B:62"  # Adresa MAC a lui ESP32
 
-# Configurarea porturilor seriale
-# uwb_ser = serial.Serial('COM6', 115200)
-# mpu_ser = serial.Serial('COM3', 115200)
+esp_socket = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
 
-uwb_addr = "C0:59:C9:08:D6:4B" # insert tag MAC address here
-mpu_addr = "A0:A3:B3:97:4B:62"
+esp_socket.connect((esp_addr, 1))   # Conectarea prin BLE la ESP32 (prin portul 1)
 
-#uwb_socket = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
-mpu_socket = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
+pos_pattern = r"POS:\[(-?\d+),(-?\d+),(-?\d+),(\d+)\]"  # Șablonul după care căutăm date despre poziția tagului UWB
+mpu_pattern = r"MPU:(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+)"  # Șablonul după care căutăm date despre accelerație și rotație de la IMU
 
-#uwb_socket.connect((uwb_addr, 1)) # ask chatgpt about this line here
-mpu_socket.connect((mpu_addr, 1))
-
-pos_pattern = r"POS:\[(-?\d+),(-?\d+),(-?\d+),(\d+)\]"
-mpu_pattern = r"MPU:(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+)"
-
+# Cozile ce vor conține liniile venite prin BLE
 uwb_data_queue = Queue()
 mpu_data_queue = Queue()
-
-#client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#client_socket.connect(('localhost', SOCKET_PORT))
-
-def read_socket():    
-    while True:
-        data = client_socket.recv(1024).decode('utf-8').strip
-        if data:
-            uwb_data_queue.put(data)
-            print(data)
-    
-
-#def read_uwb_serial():
- #   while True:
-  #      if uwb_ser.in_waiting:
-   #         line = uwb_ser.readline().decode('utf-8').strip()
-    #        uwb_data_queue.put(line)
-    
-def read_uwb_bluetooth():
-    while True:
-        data = uwb_socket.recv(1024).decode('utf-8').strip()
-        uwb_data_queue.put(data)
-
-# def read_mpu_serial():
-#     while True:
-#         if mpu_ser.in_waiting:
-#             line = mpu_ser.readline().decode('utf-8').strip()
-#             mpu_data_queue.put(line)
             
+# Funcția ce se va executa în thread și ce separă datele venite de la tag de cele ce sunt trimise de IMU            
 def read_mpu_bluetooth():
     while True:
-        data = mpu_socket.recv(1024).decode('utf-8').strip()
-        print(data)
-        mpu_data_queue.put(data)
-        uwb_data_queue.put(data)            
+        data = esp_socket.recv(1024).decode('utf-8').strip()
+        # print(data)
+        if data:
+            if data[0] == "T":
+                uwb_data_queue.put(data)
+            else:
+                if data[0] == "M":
+                    mpu_data_queue.put(data)
             
-# Start thread-uri
-#threading.Thread(target=read_uwb_bluetooth, daemon=True).start()
+# Start thread
 threading.Thread(target=read_mpu_bluetooth, daemon=True).start()
-#threading.Thread(target=read_socket, daemon=True).start()
 
 # Configurarea graficului 2D
 fig, ax = plt.subplots()
@@ -249,7 +215,7 @@ def is_above_goal_left(x, y, z):
 def is_above_goal_right(x, y, z):
     return (1000 <= x <= 1060) and (185 <= y <= 315) and (z >= 250)
 
-uwb_z = 0
+uwb_z = 0   # Variabilă globală ce memorează coordonata Z măsurată de tag
 
 def update(frame):
     global x, P, qf, uwb_z
@@ -377,9 +343,5 @@ def update(frame):
 ani = FuncAnimation(fig, update, interval=5, cache_frame_data=False)
 plt.show()
 
-# Închide conexiunile seriale
-#uwb_ser.close()
-# mpu_ser.close()
-uwb_socket.close()
-mpu_socket.close()
-#client_socket.close()
+# Închide toate conexiunile
+esp_socket.close()
