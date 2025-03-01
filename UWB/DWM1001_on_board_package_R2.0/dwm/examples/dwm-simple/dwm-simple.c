@@ -8,9 +8,6 @@
  */
 
 #include "dwm.h"
-#include "ble_advertising.h"
-#include "nrf_log.h"
-#include "sdk_errors.h"
 #include <stdio.h>
 
 /* Thread priority */
@@ -34,42 +31,6 @@ do {							\
 	"App   :  dwm-simple\n"	\
 	"Built :  " __DATE__ " " __TIME__ "\n"	\
 	"\n"
-
-
-// BLE functions
-//static ble_advertising_t m_advertising;
-
-//void ble_stack_init(void) {
-//    // Inițializarea BLE Stack (în funcție de SDK-ul Nordic)
-//}
-
-//void advertising_init(void) {
-//    ret_code_t err_code;
-
-//    ble_advdata_t advdata;
-//    ble_adv_modes_config_t options;
-
-//    memset(&advdata, 0, sizeof(advdata));
-//    advdata.name_type               = BLE_ADVDATA_FULL_NAME;
-//    advdata.include_appearance      = true;
-//    advdata.flags                   = BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE;
-
-//    memset(&options, 0, sizeof(options));
-//    options.ble_adv_fast_enabled  = true;
-//    options.ble_adv_fast_interval = 64; // 40ms
-//    options.ble_adv_fast_timeout  = 180;
-
-//    err_code = ble_advertising_init(&advdata, NULL, &options, NULL, NULL);
-//    APP_ERR_CHECK(err_code);
-
-//    ble_advertising_conn_cfg_tag_set(CONN_CFG_TAG);
-//}
-
-//void advertising_start(void) {
-//    ret_code_t err_code = ble_advertising_start(BLE_ADV_MODE_FAST);
-//    APP_ERR_CHECK(err_code);
-//}
-
 
 /**
  * Event callback
@@ -168,16 +129,9 @@ void app_thread_entry(uint32_t data)
 
         APP_ERR_CHECK(dwm_cfg_tag_set(&cfg));
         dwm_ble_compile();
-        APP_ERR_CHECK(ble_advertising_start(BLE_ADV_MODE_SLOW));
-
-        printf("BLUETOOTH!!!!!!! = %d\n", cfg.common.ble_en);
-        cfg.common.ble_en = 0;
-        printf("BLUETOOTH!!!!!!! = %d\n", cfg.common.ble_en);
 
 	/* Get node configuration */
 	APP_ERR_CHECK(dwm_cfg_get(&cfg));
-
-        printf("BLUETOOTH!!!!!!! = %d\n", cfg.common.ble_en);
 
 	/* Update rate set to 100 ms, stationary update rate also set to 100 ms for consistency */
 	APP_ERR_CHECK(dwm_upd_rate_set(DWM_UPD_RATE_MIN, DWM_UPD_RATE_MIN));

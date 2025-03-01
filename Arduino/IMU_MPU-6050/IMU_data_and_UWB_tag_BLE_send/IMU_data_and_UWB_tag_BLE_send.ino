@@ -129,7 +129,6 @@ void loop() {
     output += receivedChar;
   }
 
-  Serial.println(output); // Se afișează pe serial monitor pentru a verifica corectitudinea
   SerialBT.print(output); // Se trimite mesajul construit prin BLE către RaspberryPi
 
   // Se construiește mesajul cu date provenite de la IMU
@@ -145,7 +144,6 @@ void loop() {
   output += g.gyro.y;
   output += ",";
   output += g.gyro.z;
-  Serial.println(output); // Se afișează pe serial monitor pentru a verifica corectitudinea
   SerialBT.print(output); // Se trimite mesajul construit prin BLE către RaspberryPi
 
   delay(100); // Delay de 100ms între măsurători pentru a ne sincroniza cu restul senzorilor utilizați (ex: tag UWB)

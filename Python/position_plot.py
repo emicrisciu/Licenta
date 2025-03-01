@@ -1,5 +1,4 @@
 import serial
-import re
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, Circle, Arc
 from matplotlib.animation import FuncAnimation
@@ -16,9 +15,6 @@ esp_socket = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
 
 esp_socket.connect((esp_addr, 1))   # Conectarea prin BLE la ESP32 (prin portul 1)
 
-pos_pattern = r"POS:\[(-?\d+),(-?\d+),(-?\d+),(\d+)\]"  # Șablonul după care căutăm date despre poziția tagului UWB
-mpu_pattern = r"MPU:(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+),(-?\d+\.\d+)"  # Șablonul după care căutăm date despre accelerație și rotație de la IMU
-
 # Cozile ce vor conține liniile venite prin BLE
 uwb_data_queue = Queue()
 mpu_data_queue = Queue()
@@ -27,7 +23,6 @@ mpu_data_queue = Queue()
 def read_mpu_bluetooth():
     while True:
         data = esp_socket.recv(1024).decode('utf-8').strip()
-        # print(data)
         if data:
             if data[0] == "T":
                 uwb_data_queue.put(data)
@@ -225,34 +220,29 @@ def update(frame):
 
     # Citește datele de la portul serial (UWB)
     if not uwb_data_queue.empty():
-        uwb_line = uwb_data_queue.get()
-        uwb_match = re.search(pos_pattern, uwb_line)
-        if uwb_match:
-            try:
-                # Extrage coordonatele tag-ului UWB (x, y)
-                uwb_x = int(uwb_match.group(1))
-                uwb_y = int(uwb_match.group(2))
-                uwb_z = int(uwb_match.group(3))
-                qf = int(uwb_match.group(4))
-                #print(f"x = {uwb_x}, y = {uwb_y}, z = {uwb_z}, qf = {qf}")
-                z = np.array([uwb_x, uwb_y]).reshape((2, 1))
-                
-            except ValueError as e:
-                print(f"Parsing error: {e}")
+        try:
+            uwb_line = uwb_data_queue.get()
+            coords = uwb_line.split()
+            uwb_x = int(coords[1])
+            uwb_y = int(coords[2])
+            uwb_z = int(coords[3])
+            qf = int(coords[4])
+            z = np.array([uwb_x, uwb_y]).reshape((2, 1))
+            
+        except ValueError as e:
+            print(f"Parsing error: {e}")
     
     # Citește datele de la portul serial (MPU)
     if not mpu_data_queue.empty():
-        mpu_line = mpu_data_queue.get()
-        mpu_match = re.search(mpu_pattern, mpu_line)
-        if mpu_match:
-            try:
-                ax = float(mpu_match.group(1))  # Accel X
-                ay = float(mpu_match.group(2))  # Accel Y
-                #print(f"ax = {ax}, ay = {ay}")
-                u = np.array([ax, ay]).reshape((2, 1))
-                
-            except ValueError as e:
-                print(f"Parsing error: {e}")
+        try:
+            mpu_line = mpu_data_queue.get()
+            imu_data = mpu_line.split(',')
+            ax = float(imu_data[0].split(':')[1])
+            ay = float(imu_data[1])
+            u = np.array([ax, ay]).reshape((2, 1))
+            
+        except ValueError as e:
+            print(f"Parsing error: {e}")
                 
     # Aplică filtrul Kalman
     if z is not None:

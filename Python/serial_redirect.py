@@ -1,5 +1,6 @@
 import serial
 import threading
+import re
 
 # Configurare porturi seriale
 COM6_PORT = 'COM6'  # Portul tag-ului UWB
@@ -15,8 +16,11 @@ def forward_data(source, destination):
             if source.in_waiting > 0:  # Dacă există date disponibile pe port
                 data = source.readline().decode('utf-8').strip()  # Citește datele disponibile, linie cu linie
                 if data:
-                    destination.write((data + '\n').encode('utf-8'))  # Trimite datele către portul de destinație
-                # print(data)
+                    pos_pattern = r"POS:\[(-?\d+),(-?\d+),(-?\d+),(\d+)\]"  # Șablonul după care căutăm date despre poziția tagului UWB
+                    uwb_match = re.search(pos_pattern, data)
+                    if uwb_match:
+                        data = "T " + uwb_match.group(1) + " " + uwb_match.group(2) + " " + uwb_match.group(3) + " " + uwb_match.group(4)
+                        destination.write((data + '\n').encode('utf-8'))  # Trimite datele către portul de destinație
         except Exception as e:
             print(f"Eroare în redirecționare: {e}")
             break
