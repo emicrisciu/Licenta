@@ -1,176 +1,184 @@
+"""
+Acest fișier conține codul dedicat desenării graficului 2D asociat terenului de fotbal
+"""
+
+# Zona importării bibliotecilor
+
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, Circle, Arc
-import math
 
-# Initialize plot elements
-fig, ax = plt.subplots(figsize=(16, 9))
-goal_zone_left = None
-goal_zone_right = None
-out_zone_up = None
-out_zone_down = None
-corner_zone_up_left = None
-corner_zone_down_left = None
-corner_zone_up_right = None
-corner_zone_down_right = None
-corner_zone_left = None
-corner_zone_right = None
-above_goal_zone_left = None
-above_goal_zone_right = None
+# Zona inițializării variabilelor globale și a elementelor ce constituie desenul
+
+fig, ax = plt.subplots(figsize=(16, 9)) # Figura va avea raportul 16:9, potrivit pentru majoritatea ecranelor
+# Mai jos sunt inițializate zonele terenului, vizibile global
+poarta_stanga = None
+poarta_dreapta = None
+aut_margine_superioara = None
+aut_margine_inferioara = None
+aut_de_poarta_stanga_sus = None
+aut_de_poarta_stanga_jos = None
+aut_de_poarta_dreapta_sus = None
+aut_de_poarta_dreapta_jos = None
+aut_de_poarta_stanga = None
+aut_de_poarta_dreapta = None
+peste_poarta_stanga = None
+peste_poarta_dreapta = None
 sc = ax.scatter([], [])
+# Mai jos sunt inițializate variabilele globale reprezentând dimensiunile machetei, toate fiind măsurate în mm
+lungime_teren = 1800 
+latime_teren = 1200   
+goal_depth = 150 
+start_poarta_axa_y = 350
+latime_poarta = 500
+latime_careu_mare = 297
+start_careu_mare_axa_y = 223
+latime_careu_mic = 99
+punct_penalty = 197
+raza_cercuri = 163
+margine_teren = 200
+# Mai jos este dicționarul ce va conține perechi de tip denumire - zonă pentru toate zonele terenului
+zone_teren = {}
 
-# Field dimensions
-field_length = 1800  # Field length in mm
-field_width = 1200   # Field width in mm
-goal_depth = 150     # Goal depth in mm
-goal_y_start = 350   # Goal start position on Y axis
-goal_width = 500
-goal_offset = (field_width - goal_width) / 2
-penalty_area_size = 297
-penalty_area_offset = 223
-goal_area_size = 99
-penalty_spot = 197
-radius = 163
-border = 200
-# Approximate diagonal length of your tracking area in meters
-room_diagonal = math.sqrt(field_length**2 + field_width**2)
+# Zona funcțiilor folosite în timpul desenării terenului de fotbal
 
-# Dictionary mapping zone names to their patch objects
-zone_patches = {}
-
-def draw_field():
-    # Configure 2D plot
-    global ax, sc, goal_zone_left, goal_zone_right, out_zone_up, out_zone_down
-    global corner_zone_up_left, corner_zone_down_left, corner_zone_up_right, corner_zone_down_right
-    global corner_zone_left, corner_zone_right, above_goal_zone_left, above_goal_zone_right
-    global field_length, field_width, goal_depth, goal_width, goal_y_start, goal_offset, penalty_area_size, goal_area_size
+def deseneaza_teren():
+    """
+    Funcția ce se ocupă cu crearea și desenarea tuturor liniilor și zonelor ce alcătuiesc un teren de fotbal
+    """
     
+    # Variabilele globale ce sunt folosite în interiorul acestei funcții
+    global ax, sc, poarta_stanga, poarta_dreapta, aut_margine_superioara, aut_margine_inferioara
+    global aut_de_poarta_stanga_sus, aut_de_poarta_stanga_jos, aut_de_poarta_dreapta_sus, aut_de_poarta_dreapta_jos
+    global aut_de_poarta_stanga, aut_de_poarta_dreapta, peste_poarta_stanga, peste_poarta_dreapta
+    global lungime_teren, latime_teren, goal_depth, latime_poarta, start_poarta_axa_y, start_poarta_axa_y, latime_careu_mare, latime_careu_mic
 
-    # Create scatter plot for ball position
+    # Mingea va fi desenată ca un punct pe grafic
     sc = ax.scatter([], [], color='blue', s=50)
 
-    # Set plot limits
-    ax.set_xlim(-border, field_length + border)
-    ax.set_ylim(-border, field_width + border)
+    # Setarea limitelor graficului
+    ax.set_xlim(-margine_teren, lungime_teren + margine_teren)
+    ax.set_ylim(-margine_teren, latime_teren + margine_teren)
     ax.set_title('Soccer Field with Real-time Ball Position')
     ax.set_xlabel('X (mm)')
     ax.set_ylabel('Y (mm)')
 
-    # Draw field boundaries
-    ax.plot([0, 0], [0, field_width], color='black')  # Left goal line
-    ax.plot([field_length, field_length], [0, field_width], color='black')  # Right goal line
-    ax.plot([0, field_length], [0, 0], color='black')  # Bottom line
-    ax.plot([0, field_length], [field_width, field_width], color='black')  # Top line
-    ax.plot([field_length / 2, field_length / 2], [0, field_width], color='black')  # Middle line
+    # Desenarea marginilor terenului de fotbal
+    ax.plot([0, 0], [0, latime_teren], color='black')  # Left goal line
+    ax.plot([lungime_teren, lungime_teren], [0, latime_teren], color='black')  # Right goal line
+    ax.plot([0, lungime_teren], [0, 0], color='black')  # Bottom line
+    ax.plot([0, lungime_teren], [latime_teren, latime_teren], color='black')  # Top line
+    ax.plot([lungime_teren / 2, lungime_teren / 2], [0, latime_teren], color='black')  # Middle line
 
-    # Draw goal outlines
-    # Left goal
-    ax.plot([-goal_depth, 0], [goal_offset, goal_offset], color='grey', linewidth=1.2)
-    ax.plot([-goal_depth, -goal_depth], [goal_offset, field_width - goal_offset], color='grey', linewidth=1.2)
-    ax.plot([-goal_depth, 0], [field_width - goal_offset, field_width - goal_offset], color='grey', linewidth=1.2)
-    # Right goal
-    ax.plot([field_length, field_length + goal_depth], [goal_offset, goal_offset], color='grey', linewidth=1.2)
-    ax.plot([field_length + goal_depth, field_length + goal_depth], [goal_offset, field_width - goal_offset], color='grey', linewidth=1.2)
-    ax.plot([field_length, field_length + goal_depth], [field_width - goal_offset, field_width - goal_offset], color='grey', linewidth=1.2)
+    # Desenarea porților
+    # Poarta stângă
+    ax.plot([-goal_depth, 0], [start_poarta_axa_y, start_poarta_axa_y], color='grey', linewidth=1.2)
+    ax.plot([-goal_depth, -goal_depth], [start_poarta_axa_y, latime_teren - start_poarta_axa_y], color='grey', linewidth=1.2)
+    ax.plot([-goal_depth, 0], [latime_teren - start_poarta_axa_y, latime_teren - start_poarta_axa_y], color='grey', linewidth=1.2)
+    # Poarta dreaptă
+    ax.plot([lungime_teren, lungime_teren + goal_depth], [start_poarta_axa_y, start_poarta_axa_y], color='grey', linewidth=1.2)
+    ax.plot([lungime_teren + goal_depth, lungime_teren + goal_depth], [start_poarta_axa_y, latime_teren - start_poarta_axa_y], color='grey', linewidth=1.2)
+    ax.plot([lungime_teren, lungime_teren + goal_depth], [latime_teren - start_poarta_axa_y, latime_teren - start_poarta_axa_y], color='grey', linewidth=1.2)
 
-    # Center circle
-    center_circle = Circle((field_length / 2, field_width / 2), radius, edgecolor='black', facecolor='none', linestyle='-')
+    # Cercul de la centrul terenului
+    center_circle = Circle((lungime_teren / 2, latime_teren / 2), raza_cercuri, edgecolor='black', facecolor='none', linestyle='-')
     ax.add_patch(center_circle)
 
-    # Center point
-    ax.scatter([field_length / 2], [field_width / 2], color='black')
+    # Punctul din centrul terenului
+    ax.scatter([lungime_teren / 2], [latime_teren / 2], color='black')
 
-    # Penalty areas
-    penalty_area_left = Rectangle((0, penalty_area_offset), penalty_area_size, field_width - 2 * penalty_area_offset, edgecolor='black', facecolor='none')
-    penalty_area_right = Rectangle((field_length - penalty_area_size, penalty_area_offset), penalty_area_size, field_width - 2 * penalty_area_offset, edgecolor='black', facecolor='none')
+    # Careurile mari
+    penalty_area_left = Rectangle((0, start_careu_mare_axa_y), latime_careu_mare, latime_teren - 2 * start_careu_mare_axa_y, edgecolor='black', facecolor='none')
+    penalty_area_right = Rectangle((lungime_teren - latime_careu_mare, start_careu_mare_axa_y), latime_careu_mare, latime_teren - 2 * start_careu_mare_axa_y, edgecolor='black', facecolor='none')
     ax.add_patch(penalty_area_left)
     ax.add_patch(penalty_area_right)
 
-    # Goal areas
-    goal_area_left = Rectangle((0, goal_y_start), goal_area_size, goal_width, edgecolor='black', facecolor='none')
-    goal_area_right = Rectangle((field_length - goal_area_size, goal_y_start), goal_area_size, goal_width, edgecolor='black', facecolor='none')
+    # Careurile mici
+    goal_area_left = Rectangle((0, start_poarta_axa_y), latime_careu_mic, latime_poarta, edgecolor='black', facecolor='none')
+    goal_area_right = Rectangle((lungime_teren - latime_careu_mic, start_poarta_axa_y), latime_careu_mic, latime_poarta, edgecolor='black', facecolor='none')
     ax.add_patch(goal_area_left)
     ax.add_patch(goal_area_right)
 
-    # Penalty spots
-    ax.scatter([penalty_spot], [field_width / 2], color='black')
-    ax.scatter([field_length - penalty_spot], [field_width / 2], color='black')
+    # Punctele pentru loviturile de la 11 metri
+    ax.scatter([punct_penalty], [latime_teren / 2], color='black')
+    ax.scatter([lungime_teren - punct_penalty], [latime_teren / 2], color='black')
 
-    # Penalty arcs
-    penalty_arc_left = Arc((penalty_spot, field_width / 2), 2 * radius, 320, angle=0, theta1=308, theta2=52, edgecolor='black')
-    penalty_arc_right = Arc((field_length - penalty_spot, field_width / 2), 2 * radius, 320, angle=0, theta1=128, theta2=232, edgecolor='black')
+    # Semicercurile din dreptul careurilor mari
+    penalty_arc_left = Arc((punct_penalty, latime_teren / 2), 2 * raza_cercuri, 320, angle=0, theta1=308, theta2=52, edgecolor='black')
+    penalty_arc_right = Arc((lungime_teren - punct_penalty, latime_teren / 2), 2 * raza_cercuri, 320, angle=0, theta1=128, theta2=232, edgecolor='black')
     ax.add_patch(penalty_arc_left)
     ax.add_patch(penalty_arc_right)
 
-    # Goal zones
-    goal_zone_left = Rectangle((-goal_depth, goal_y_start), goal_depth, goal_width, color='green', alpha=0.2)
-    goal_zone_right = Rectangle((field_length, goal_y_start), goal_depth, goal_width, color='green', alpha=0.2)
-    ax.add_patch(goal_zone_left)
-    zone_patches["goal_left"] = goal_zone_left
-    ax.add_patch(goal_zone_right)
-    zone_patches["goal_right"] = goal_zone_right
+    # Zonele în care considerăm că s-a marcat un gol
+    poarta_stanga = Rectangle((-goal_depth, start_poarta_axa_y), goal_depth, latime_poarta, color='green', alpha=0.2)
+    poarta_dreapta = Rectangle((lungime_teren, start_poarta_axa_y), goal_depth, latime_poarta, color='green', alpha=0.2)
+    ax.add_patch(poarta_stanga)
+    zone_teren["poarta_stanga"] = poarta_stanga
+    ax.add_patch(poarta_dreapta)
+    zone_teren["poarta_dreapta"] = poarta_dreapta
 
-    # Out-of-bounds zones
-    out_zone_up = Rectangle((-border, field_width), field_length + 2 * border, border, color='red', alpha=0.2)
-    out_zone_down = Rectangle((-border, -border), field_length + 2 * border, border, color='red', alpha=0.2)
-    ax.add_patch(out_zone_up)
-    zone_patches["out_up"] = out_zone_up
-    ax.add_patch(out_zone_down)
-    zone_patches["out_down"] = out_zone_down
+    # Zonele de aut de margine, din partea superioară, respectiv inferioară a terenului
+    aut_margine_superioara = Rectangle((-margine_teren, latime_teren), lungime_teren + 2 * margine_teren, margine_teren, color='red', alpha=0.2)
+    aut_margine_inferioara = Rectangle((-margine_teren, -margine_teren), lungime_teren + 2 * margine_teren, margine_teren, color='red', alpha=0.2)
+    ax.add_patch(aut_margine_superioara)
+    zone_teren["aut_margine_superioara"] = aut_margine_superioara
+    ax.add_patch(aut_margine_inferioara)
+    zone_teren["aut_margine_inferioara"] = aut_margine_inferioara
 
-    # Corner zones
-    corner_zone_up_left = Rectangle((-goal_depth, goal_offset + goal_width), goal_depth, goal_offset, color='orange', alpha=0.2)
-    corner_zone_down_left = Rectangle((-goal_depth, 0), goal_depth, goal_offset, color='orange', alpha=0.2)
-    corner_zone_left = Rectangle((-border, 0), border - goal_depth, field_width, color='orange', alpha=0.2)
-    corner_zone_up_right = Rectangle((field_length, goal_offset + goal_width), goal_depth, goal_offset, color='orange', alpha=0.2)
-    corner_zone_down_right = Rectangle((field_length, 0), goal_depth, goal_offset, color='orange', alpha=0.2)
-    corner_zone_right = Rectangle((field_length + goal_depth, 0), border - goal_depth, field_width, color='orange', alpha=0.2)
-    ax.add_patch(corner_zone_up_left)
-    zone_patches["corner_up_left"] = corner_zone_up_left
-    ax.add_patch(corner_zone_down_left)
-    zone_patches["corner_down_left"] = corner_zone_down_left
-    ax.add_patch(corner_zone_left)
-    zone_patches["corner_left"] = corner_zone_left
-    ax.add_patch(corner_zone_up_right)
-    zone_patches["corner_up_right"] = corner_zone_up_right
-    ax.add_patch(corner_zone_down_right)
-    zone_patches["corner_down_right"] = corner_zone_down_right
-    ax.add_patch(corner_zone_right)
-    zone_patches["corner_right"] = corner_zone_right
+    # Zonele de corner / aut de poartă
+    aut_de_poarta_stanga_sus = Rectangle((-goal_depth, start_poarta_axa_y + latime_poarta), goal_depth, start_poarta_axa_y, color='orange', alpha=0.2)
+    aut_de_poarta_stanga_jos = Rectangle((-goal_depth, 0), goal_depth, start_poarta_axa_y, color='orange', alpha=0.2)
+    aut_de_poarta_stanga = Rectangle((-margine_teren, 0), margine_teren - goal_depth, latime_teren, color='orange', alpha=0.2)
+    aut_de_poarta_dreapta_sus = Rectangle((lungime_teren, start_poarta_axa_y + latime_poarta), goal_depth, start_poarta_axa_y, color='orange', alpha=0.2)
+    aut_de_poarta_dreapta_jos = Rectangle((lungime_teren, 0), goal_depth, start_poarta_axa_y, color='orange', alpha=0.2)
+    aut_de_poarta_dreapta = Rectangle((lungime_teren + goal_depth, 0), margine_teren - goal_depth, latime_teren, color='orange', alpha=0.2)
+    ax.add_patch(aut_de_poarta_stanga_sus)
+    zone_teren["aut_de_poarta_stanga_sus"] = aut_de_poarta_stanga_sus
+    ax.add_patch(aut_de_poarta_stanga_jos)
+    zone_teren["aut_de_poarta_stanga_jos"] = aut_de_poarta_stanga_jos
+    ax.add_patch(aut_de_poarta_stanga)
+    zone_teren["aut_de_poarta_stanga"] = aut_de_poarta_stanga
+    ax.add_patch(aut_de_poarta_dreapta_sus)
+    zone_teren["aut_de_poarta_dreapta_sus"] = aut_de_poarta_dreapta_sus
+    ax.add_patch(aut_de_poarta_dreapta_jos)
+    zone_teren["aut_de_poarta_dreapta_jos"] = aut_de_poarta_dreapta_jos
+    ax.add_patch(aut_de_poarta_dreapta)
+    zone_teren["aut_de_poarta_dreapta"] = aut_de_poarta_dreapta
 
-    # Above-goal zones
-    above_goal_zone_left = Rectangle((-goal_depth, goal_y_start), goal_depth, goal_width, color='orange', alpha=0.2)
-    above_goal_zone_right = Rectangle((field_length, goal_y_start), goal_depth, goal_width, color='orange', alpha=0.2)
-    ax.add_patch(above_goal_zone_left)
-    zone_patches["above_goal_left"] = above_goal_zone_left
-    ax.add_patch(above_goal_zone_right)
-    zone_patches["above_goal_right"] = above_goal_zone_right
+    # Zonele ce indică faptul că mingea a trecut peste poartă. Ele se suprapun cu zonele de gol
+    peste_poarta_stanga = Rectangle((-goal_depth, start_poarta_axa_y), goal_depth, latime_poarta, color='orange', alpha=0.2)
+    peste_poarta_dreapta = Rectangle((lungime_teren, start_poarta_axa_y), goal_depth, latime_poarta, color='orange', alpha=0.2)
+    ax.add_patch(peste_poarta_stanga)
+    zone_teren["peste_poarta_stanga"] = peste_poarta_stanga
+    ax.add_patch(peste_poarta_dreapta)
+    zone_teren["peste_poarta_dreapta"] = peste_poarta_dreapta
 
-# Fixed zone detection functions to match field dimensions
-# Function for zone detection that returns the zone type
-def detect_zone(x, y, z):
-    if (-goal_depth <= x <= 0) and (goal_y_start <= y <= goal_y_start + goal_width) and (z >= 250):
-        return 'above_goal_left'
-    elif (field_length <= x <= field_length + goal_depth) and (goal_y_start <= y <= goal_y_start + goal_width) and (z >= 250):
-        return 'above_goal_right'
-    if (-goal_depth <= x <= 0) and (goal_y_start <= y <= goal_y_start + goal_width):
-        return 'goal_left'
-    elif (field_length <= x <= field_length + goal_depth) and (goal_y_start <= y <= goal_y_start + goal_width):
-        return 'goal_right'
-    elif (-border <= x <= field_length + border) and (y > field_width):
-        return 'out_up'
-    elif (-border <= x <= field_length + border) and (y < 0):
-        return 'out_down'
-    elif (-goal_depth <= x <= 0) and (goal_y_start + goal_width <= y <= field_width):
-        return 'corner_up_left'
-    elif (-goal_depth <= x <= 0) and (0 <= y <= goal_y_start):
-        return 'corner_down_left'
-    elif (field_length <= x <= field_length + goal_depth) and (goal_y_start + goal_width <= y <= field_width):
-        return 'corner_up_right'
-    elif (field_length <= x <= field_length + goal_depth) and (0 <= y <= goal_y_start):
-        return 'corner_down_right'
-    elif (-border <= x <= -goal_depth) and (0 <= y <= field_width):
-        return 'corner_left'
-    elif (field_length + goal_depth <= x <= field_length + border) and (0 <= y <= field_width):
-        return 'corner_right'
+def detecteaza_zona(x, y, z):
+    """
+    Funcție ce determină zona în care se află mingea la momentul curent, folosită pentru a evidenția zona în cauză în funcția ce actualizează desenul
+    """
+    if (-goal_depth <= x <= 0) and (start_poarta_axa_y <= y <= start_poarta_axa_y + latime_poarta) and (z >= 250):
+        return "peste_poarta_stanga"
+    elif (lungime_teren <= x <= lungime_teren + goal_depth) and (start_poarta_axa_y <= y <= start_poarta_axa_y + latime_poarta) and (z >= 250):
+        return "peste_poarta_dreapta"
+    if (-goal_depth <= x <= 0) and (start_poarta_axa_y <= y <= start_poarta_axa_y + latime_poarta):
+        return "poarta_stanga"
+    elif (lungime_teren <= x <= lungime_teren + goal_depth) and (start_poarta_axa_y <= y <= start_poarta_axa_y + latime_poarta):
+        return "poarta_dreapta"
+    elif (-margine_teren <= x <= lungime_teren + margine_teren) and (y > latime_teren):
+        return "aut_margine_superioara"
+    elif (-margine_teren <= x <= lungime_teren + margine_teren) and (y < 0):
+        return "aut_margine_inferioara"
+    elif (-goal_depth <= x <= 0) and (start_poarta_axa_y + latime_poarta <= y <= latime_teren):
+        return "aut_de_poarta_stanga_sus"
+    elif (-goal_depth <= x <= 0) and (0 <= y <= start_poarta_axa_y):
+        return "aut_de_poarta_stanga_jos"
+    elif (lungime_teren <= x <= lungime_teren + goal_depth) and (start_poarta_axa_y + latime_poarta <= y <= latime_teren):
+        return "aut_de_poarta_dreapta_sus"
+    elif (lungime_teren <= x <= lungime_teren + goal_depth) and (0 <= y <= start_poarta_axa_y):
+        return "aut_de_poarta_dreapta_jos"
+    elif (-margine_teren <= x <= -goal_depth) and (0 <= y <= latime_teren):
+        return "aut_de_poarta_stanga"
+    elif (lungime_teren + goal_depth <= x <= lungime_teren + margine_teren) and (0 <= y <= latime_teren):
+        return "aut_de_poarta_dreapta"
     else:
-        return "field"
+        return "teren"

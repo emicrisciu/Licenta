@@ -1,3 +1,9 @@
+"""
+Acest fișier conține codul destinat asigurării comunicării prin tehnologia fără fir Bluetooth
+"""
+
+# Zona importării bibliotecilor
+
 import bluetooth
 import matplotlib.pyplot as plt
 import time
@@ -5,77 +11,92 @@ import sys
 from collections import deque
 import tkinter as tk
 
-# Variabile globale - explain
-terminate_program = False
-uwb_data_queue = deque(maxlen=10) # size?
-mpu_data_queue = deque(maxlen=10)
-esp_socket = None #bluetooth.BluetoothSocket(bluetooth.RFCOMM)
+# Zona inițializării variabilelor globale
+termina_program = False
+coada_date_tag_uwb = deque(maxlen=10) # size?
+coada_date_imu = deque(maxlen=10)
+socket_esp = None #bluetooth.BluetoothSocket(bluetooth.RFCOMM)
 
-def set_bluetooth(esp_addr):
-	global esp_socket
-	try:
-		esp_socket = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
-		esp_socket.connect((esp_addr, 1))   # Connect to ESP32 via BLE (port 1)
-		print("Successfully connected to ESP32")
-	except bluetooth.BluetoothError as e:
-		print(f"Bluetooth connection error: {e}")
-		esp_socket = None
-		#exit(1)
+# Zona funcțiilor folosite pentru asigurarea comunicării prin Bluetooth între modulele RaspberryPi și ESP32
 
-def read_esp_bluetooth():
-    global terminate_program, esp_socket
-    while not terminate_program:
+def seteaza_conexiune_bluetooth(adresa_mac_esp):
+    """
+    Funcție ce inițializează conexiunea Bluetooth cu un modul a cărui adresă MAC este furnizată ca parametru
+    """
+    global socket_esp
+    try:
+        socket_esp = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
+        socket_esp.connect((adresa_mac_esp, 1))   # Connect to ESP32 via BLE (port 1)
+        print("Conexiunea Bluetooth cu ESP32 s-a efectuat cu succes!")
+    except bluetooth.BluetoothError as e:
+        print(f"Eroare la conexiunea Bluetooth: {e}")
+        socket_esp = None
+
+def citeste_prin_bluetooth():
+    """
+    Funcție ce citește date prin Bluetooth și le plasează în cozile potrivite în funcție de forma mesajului citit
+    """
+    global termina_program, socket_esp
+    while not termina_program:
         try:
-            data = esp_socket.recv(1024).decode('utf-8').strip()
+            data = socket_esp.recv(1024).decode('utf-8').strip()
             if data:
-                print(f"Data read through BLE: {data}")
+                print(f"Date citite prin Bluetooth: {data}")
                 if data[0] == 'T':
-                    uwb_data_queue.append(data)
+                    coada_date_tag_uwb.append(data)
                 elif data[0] == 'M':
-                    mpu_data_queue.append(data)
+                    coada_date_imu.append(data)
                 elif data == 'ANCHOR':
-                    print("Check Anchors Config")
-                    terminate_program = True
+                    print("Verifica configuratia ancorelor!")
+                    termina_program = True
                     plt.close('all')
                     sys.exit(0)
         except bluetooth.BluetoothError as e:
-            print(f"Bluetooth error reading UWB data: {e}")
+            print(f"Eroare la citirea datelor prin Bluetooth: {e}")
             time.sleep(1)
             
-def show_popup(message):
-	popup = tk.Tk()
-	popup.title("Notificare")
-	popup.geometry("500x100")
-	label = tk.Label(popup, text=message, font=("Arial", 12))
-	label.pack(pady=20)
-	
-	popup.after(1000, popup.destroy)
-	popup.mainloop()
+def afiseaza_notificare(mesaj):
+    """
+    Funcție ce creează o notificare de tip pop-up pe ecran, pentru a-i comunica utilizatorului un eveniment legat de depășirea unei linii din terenul de fotbal de către minge
+    """
+    popup = tk.Tk()
+    popup.title("Notificare")
+    popup.geometry("500x100")
+    label = tk.Label(popup, text=mesaj, font=("Arial", 12))
+    label.pack(pady=20)
+
+    popup.after(1000, popup.destroy)
+    popup.mainloop()
             
-def bluetooth_health_check():
-	global terminate_program, esp_socket
-	while not terminate_program:
-		try:
-			if esp_socket is None:
-				raise ConnectionError("ESP socket is None")
+def verifica_conexiune_bluetooth():
+    """
+    Funcție ce verifică starea conexiunii Bluetooth - DE ACTUALIZAT! DEOCAMDATĂ SE VERIFICĂ DOAR DACĂ CONEXIUNEA A PORNIT, NU ȘI DACĂ SE STINGE PE PARCURS!
+    """
+    global termina_program, socket_esp
+    while not termina_program:
+        try:
+            if socket_esp is None:
+                raise ConnectionError("Nu exista socket ESP!")
 
 			# Trimite un semnal inofensiv sau verifică cu recv non-blocking
-			esp_socket.send(b'\n')  # trimite ceva neutru, gen newline
-			time.sleep(2)  # verifică la fiecare 2 secunde
-		except (OSError, ConnectionError) as e:
-			print(f"[ERROR] Conexiunea Bluetooth a eșuat: {e}")
-			terminate_program = True
-			try:
-				esp_socket.close()
-			except:
-				pass
-			time.sleep(1)
-			show_popup("Bluetooth deconectat sau indisponibil!")
-			plt.close('all')
-			break
+            socket_esp.send(b'\n')  # trimite ceva neutru, gen newline
+            time.sleep(2)  # verifică la fiecare 2 secunde
+        except (OSError, ConnectionError) as e:
+            print(f"[ERROR] Conexiunea Bluetooth a eșuat: {e}")
+            termina_program = True
+            try:
+                socket_esp.close()
+            except:
+                pass
+            time.sleep(1)
+            afiseaza_notificare("Bluetooth deconectat sau indisponibil!")
+            plt.close('all')
+            break
 
-def range_check(x, y, min_x, max_x, min_y, max_y):
-    # Apply a hard limit - heavily weight positions toward the valid range
+def verifica_intervalul_de_valori(x, y, min_x, max_x, min_y, max_y):
+    """
+    Funcție ce verifică dacă poziția curentă a mingii se află în limitele machetei - DE VĂZUT DACĂ RĂMÂNE AICI SAU ÎN FIȘIERUL PRINCIPAL!
+    """
     if x < min_x:
         x = min_x
     elif x > max_x:
