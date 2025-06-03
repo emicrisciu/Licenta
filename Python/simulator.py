@@ -2,7 +2,7 @@ import time
 import math
 import random
 
-def simulate_trajectory():
+def simuleaza_traiectoria():
     """
     Generează o traiectorie simplă cu evenimente interesante.
     Returnează o listă de tuple (x, y, z, timestamp)

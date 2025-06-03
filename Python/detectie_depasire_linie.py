@@ -4,15 +4,15 @@ Acest fișier conține codul destinat algoritmului de detecție a depășirii li
 
 # Zona importării bibliotecilor
 
-import football_field
+import teren_fotbal
 import math
 
 # Inițializarea dicționarului ce cuprinde marginile terenului
 margini_teren = {
-    "margine_stanga": [(0, 0), (0, football_field.latime_teren)],
-    "margine_dreapta": [(football_field.lungime_teren, 0), (football_field.lungime_teren, football_field.latime_teren)],
-    "margine_inferioara": [(0, 0), (football_field.lungime_teren, 0)],
-    "margine_superioara": [(0, football_field.latime_teren), (football_field.lungime_teren, football_field.latime_teren)]
+    "margine_stanga": [(0, 0), (0, teren_fotbal.latime_teren)],
+    "margine_dreapta": [(teren_fotbal.lungime_teren, 0), (teren_fotbal.lungime_teren, teren_fotbal.latime_teren)],
+    "margine_inferioara": [(0, 0), (teren_fotbal.lungime_teren, 0)],
+    "margine_superioara": [(0, teren_fotbal.latime_teren), (teren_fotbal.lungime_teren, teren_fotbal.latime_teren)]
 }
 
 # Zona funcțiilor ce implementează algoritmul de detecție a depășirii liniilor
@@ -71,8 +71,8 @@ def detecteaza_depasirea_liniei(pozitie_curenta, pozitie_anterioara, coordonata_
             punct_de_intersectie = calculeaza_punct_de_intersectie(pozitie_anterioara, pozitie_curenta, p3, p4)
             
 			# Determine directie (in/afara)
-            zona_curenta = football_field.detecteaza_zona(pozitie_curenta[0], pozitie_curenta[1], coordonata_z)
-            zona_anterioara = football_field.detecteaza_zona(pozitie_anterioara[0], pozitie_anterioara[1], coordonata_z)
+            zona_curenta = teren_fotbal.detecteaza_zona(pozitie_curenta[0], pozitie_curenta[1], coordonata_z)
+            zona_anterioara = teren_fotbal.detecteaza_zona(pozitie_anterioara[0], pozitie_anterioara[1], coordonata_z)
 	
             if zona_anterioara == "teren" and zona_curenta != "teren":
                 directie = "afara"
