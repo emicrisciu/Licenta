@@ -23,11 +23,12 @@ def verifica_intersectie_segmente(p1, p2, p3, p4):
     """
     def verifica_sens_opus_acelor_de_ceasornic(A, B, C):
         """
-        Funcție ce determină sensul invers al acelor de ceasornic pe care îl determină punctele extreme ale segmentelor (? TO BE EXPLAINED BETTER!)
+        Funcție ce determină sensul invers al acelor de ceasornic pe care îl determină punctele extreme ale segmentelor
         """
         return (C[1]-A[1]) * (B[0]-A[0]) > (B[1]-A[1]) * (C[0]-A[0])
     
-    return verifica_sens_opus_acelor_de_ceasornic(p1, p3, p4) != verifica_sens_opus_acelor_de_ceasornic(p2, p3, p4) and verifica_sens_opus_acelor_de_ceasornic(p1, p2, p3) != verifica_sens_opus_acelor_de_ceasornic(p1, p2, p4)
+    return (verifica_sens_opus_acelor_de_ceasornic(p1, p3, p4) != verifica_sens_opus_acelor_de_ceasornic(p2, p3, p4) and 
+            verifica_sens_opus_acelor_de_ceasornic(p1, p2, p3) != verifica_sens_opus_acelor_de_ceasornic(p1, p2, p4))
 
 def calculeaza_punct_de_intersectie(p1, p2, p3, p4):
     """
@@ -38,12 +39,12 @@ def calculeaza_punct_de_intersectie(p1, p2, p3, p4):
     x3, y3 = p3
     x4, y4 = p4
     
-    # linie 1 represented as a1x + b1y = c1
+    # linia 1 scrisă ca a1x + b1y = c1
     a1 = y2 - y1
     b1 = x1 - x2
     c1 = a1*x1 + b1*y1
     
-    # linie 2 represented as a2x + b2y = c2
+    # linia 2 scrisă ca a2x + b2y = c2
     a2 = y4 - y3
     b2 = x3 - x4
     c2 = a2*x3 + b2*y3
@@ -51,7 +52,7 @@ def calculeaza_punct_de_intersectie(p1, p2, p3, p4):
     determinant = a1*b2 - a2*b1
     
     if determinant == 0:
-        return None  # Lines are parallel
+        return None  # Liniile sunt paralele
     else:
         x = (b2*c1 - b1*c2)/determinant
         y = (a1*c2 - a2*c1)/determinant
@@ -62,15 +63,15 @@ def detecteaza_depasirea_liniei(pozitie_curenta, pozitie_anterioara, coordonata_
     Funcție ce cuprinde algoritmul de detecție a depășirii liniilor
     """
     mesaj = ""
-	# Check for intersection with each boundary
+	# Se verifică dacă mingea depășește vreo margine
     for denumire_margine, puncte_margine in margini_teren.items():
         p3, p4 = puncte_margine
         
         if verifica_intersectie_segmente(pozitie_anterioara, pozitie_curenta, p3, p4):
-			# Calculate exact crossing punct
+			# În cazul detecției unei depășiri, se calculează punctul exact prin care mingea a depășit terenul
             punct_de_intersectie = calculeaza_punct_de_intersectie(pozitie_anterioara, pozitie_curenta, p3, p4)
             
-			# Determine directie (in/afara)
+			# Determinarea direcției mingii (înăuntru/afară)
             zona_curenta = teren_fotbal.detecteaza_zona(pozitie_curenta[0], pozitie_curenta[1], coordonata_z)
             zona_anterioara = teren_fotbal.detecteaza_zona(pozitie_anterioara[0], pozitie_anterioara[1], coordonata_z)
 	
@@ -98,7 +99,7 @@ def detecteaza_depasirea_liniei(pozitie_curenta, pozitie_anterioara, coordonata_
             else:
                 directie = "neclara"
             
-			# Calculate crossing viteza
+			# Se calculează viteza cu care mingea a depășit linia
             dx = pozitie_curenta[0] - pozitie_anterioara[0]
             dy = pozitie_curenta[1] - pozitie_anterioara[1]
             viteza = math.sqrt(dx**2 + dy**2) / dt

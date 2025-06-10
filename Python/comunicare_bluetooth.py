@@ -26,7 +26,7 @@ def seteaza_conexiune_bluetooth(adresa_mac_esp):
     global socket_esp
     try:
         socket_esp = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
-        socket_esp.connect((adresa_mac_esp, 1))   # Connect to ESP32 via BLE (port 1)
+        socket_esp.connect((adresa_mac_esp, 1))   # Ne conectăm la ESP32 pe baza adresei sale MAC, pe portul 1
         print("Conexiunea Bluetooth cu ESP32 s-a efectuat cu succes!")
     except bluetooth.BluetoothError as e:
         print(f"Eroare la conexiunea Bluetooth: {e}")
@@ -46,7 +46,7 @@ def citeste_prin_bluetooth():
                     coada_date_tag_uwb.append(data)
                 elif data[0] == 'M':
                     coada_date_imu.append(data)
-                elif data == 'ANCHOR':
+                elif data == 'ANCORA':
                     print("Verifica configuratia ancorelor!")
                     termina_program = True
                     plt.close('all')
@@ -78,7 +78,7 @@ def verifica_conexiune_bluetooth():
             if socket_esp is None:
                 raise ConnectionError("Nu exista socket ESP!")
 
-			# Trimite un semnal inofensiv sau verifică cu recv non-blocking
+			# Trimite un semnal inofensiv sau verifică cu recv non-blockin
             socket_esp.send(b'\n')  # trimite ceva neutru, gen newline
             time.sleep(2)  # verifică la fiecare 2 secunde
         except (OSError, ConnectionError) as e:
@@ -92,19 +92,3 @@ def verifica_conexiune_bluetooth():
             afiseaza_notificare("Bluetooth deconectat sau indisponibil!")
             plt.close('all')
             break
-
-def verifica_intervalul_de_valori(x, y, min_x, max_x, min_y, max_y):
-    """
-    Funcție ce verifică dacă poziția curentă a mingii se află în limitele machetei - DE VĂZUT DACĂ RĂMÂNE AICI SAU ÎN FIȘIERUL PRINCIPAL!
-    """
-    if x < min_x:
-        x = min_x
-    elif x > max_x:
-        x = max_x
-    
-    if y < min_y:
-        y = min_y
-    elif y > max_y:
-        y = max_y
-    
-    return x, y

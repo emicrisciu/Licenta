@@ -1,141 +1,113 @@
 #include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
-#include <Wire.h>
 #include <BluetoothSerial.h>
 
-Adafruit_MPU6050 mpu;
-BluetoothSerial SerialBT;
+#define RX_PIN 18  // Pinul 18 de pe ESP32 este pinul de recepție pentru interfața serială UART
+#define TX_PIN 19  // Pinul 19 de pe ESP32 este pinul de transmisie pentru interfața serială UART
 
-#define RXD2 18  // GPIO16 pe ESP32 – primește date de la DWM1001
-#define TXD2 19  // GPIO17 – nu îl folosești acum, dar îl inițializăm
+Adafruit_MPU6050 imu; // Declararea obiectului ce reprezintă unitatea de măsurare inerțială (IMU) MPU-6050
+BluetoothSerial Serial_Bluetooth; // Declararea obiectului ce reprezintă conexiunea Bluetooth
 
-const float accelThreshold = 15.0; // Pragul accelerației folosit la detectarea unui impact cu mingea
-const float gyroThreshold = 200.0; // Pragul rotației folosit la detectarea unui impact cu mingea
-unsigned long impactStartTime = 0;
-const unsigned long impactDuration = 50; // 50ms = timpul în care se confirmă impactul
+sensors_event_t accelerometru, giroscop, temperatura; // Declararea obiectelor de tip eveniment ce vor stoca informațiile despre accelerația, rotația și temperatura măsurate de IMU
 
-sensors_event_t a, g, temp;
+String mesaj_bluetooth = ""; // Variabilă globală ce va stoca mesajul ce va fi trimis prin Bluetooth către RaspberryPi
 
-float impactSignal = 0;
+String proceseaza_date_UWB(String date) {
+  /*
+  Funcție ce procesează datele primite prin interfața serială UART de la eticheta UWB
+  */
 
-String output = "";
-
-String processUWBData(String data) {
   // verifica daca toate ancorele sunt awake!
-  // int checkIndex4 = data.indexOf("DIST2:0x");
-  // int checkIndex5 = data.indexOf("DIST3:0x");
+  // int checkIndex4 = date.indexOf("DIST2:0x");
+  // int checkIndex5 = date.indexOf("DIST3:0x");
   // if(checkIndex4 != -1 && checkIndex5 == -1)
   // {
-  //   Serial.print("ANCHOR: ");
-  //   Serial.println(data);
-  //   return "ANCHOR";
+  //   Serial.print("ANCORA: ");
+  //   Serial.println(date);
+  //   return "ANCORA";
   // }
-  // Caută dacă linia conține prefixul "POS:["
-  int startIndex = data.indexOf("POS:[");
-  if (startIndex == -1) return ""; // Nu am găsit pattern-ul
+  // Căutăm prefixul "POS:[" în linia curentă primită de la eticheta UWB
+  int startIndex = date.indexOf("POS:[");
+  if (startIndex == -1) return ""; // Nu am găsit șablonul, deci returnăm un mesaj gol
 
-  int endIndex = data.indexOf("]", startIndex);
-  if (endIndex == -1) return ""; // Nu am găsit închiderea
+  int stopIndex = date.indexOf("]", startIndex);
+  if (stopIndex == -1) return ""; // Nu am găsit închiderea șablonului, deci returnăm un mesaj gol
 
-  // Extragem substringul cu coordonatele
-  String coords = data.substring(startIndex + 5, endIndex); // exclude "POS:[" și "]"
+  // Extragem subșirul cu coordonatele, excluzând "POS:[" și "]" din mesajul identificat
+  String coordonate = date.substring(startIndex + 5, stopIndex);
   
   // Separăm valorile pe baza virgulelor
-  int firstComma = coords.indexOf(',');
-  int secondComma = coords.indexOf(',', firstComma + 1);
-  int thirdComma = coords.indexOf(',', secondComma + 1);
+  int primaVirgula = coordonate.indexOf(',');
+  int aDouaVirgula = coordonate.indexOf(',', primaVirgula + 1);
+  int aTreiaVirgula = coordonate.indexOf(',', aDouaVirgula + 1);
 
-  if (firstComma == -1 || secondComma == -1 || thirdComma == -1) return "";
+  // Dacă în șir nu există cele trei virgule, înseamnă că nu putem extrage cele patru valori de interes
+  if (primaVirgula == -1 || aDouaVirgula == -1 || aTreiaVirgula == -1) return "";
 
-  String x = coords.substring(0, firstComma);
-  String y = coords.substring(firstComma + 1, secondComma);
-  String z = coords.substring(secondComma + 1, thirdComma);
-  String qf = coords.substring(thirdComma + 1);
+  // Extragem coordonatele și factorul de calitate pe baza virgulelor din șir
+  String x = coordonate.substring(0, primaVirgula);
+  String y = coordonate.substring(primaVirgula + 1, aDouaVirgula);
+  String z = coordonate.substring(aDouaVirgula + 1, aTreiaVirgula);
+  String factor_calitate = coordonate.substring(aTreiaVirgula + 1);
 
-  // Formăm stringul final: "T x y z qf"
-  String result = "T " + x + " " + y + " " + z + " " + qf;
-
-  return result;
+  // Formăm și returnăm mesajul final: "T x y z factor_calitate"
+  String mesaj = "T " + x + " " + y + " " + z + " " + factor_calitate;
+  return mesaj;
 }
 
 void setup(void) {
-  Serial.begin(115200);
-  SerialBT.begin("ESP32");
-  // Inițializezi Serial2 (RX de pe DWM, TX inutil momentan)
-  Serial2.begin(115200, SERIAL_8N1, RXD2, TXD2);
+  /*
+  Funcție ce se execută la începutul programului o singură dată
+  Inițializează și configurează componentele hardware și conexiunile
+  */
 
-  while (!Serial) delay(10); // Se așteaptă deschiderea conexiunii seriale
+  Serial_Bluetooth.begin("ESP32");  // Se inițializează conexiunea Bluetooth
+  Serial2.begin(115200, SERIAL_8N1, RX_PIN, TX_PIN); // Se inițialiează conexiunea prin interfața serială UART
 
-  // Inițializarea IMU-ului
-  if (!mpu.begin()) {
-    Serial.println("Failed to find MPU6050 chip");
+  // Inițializarea senzorului IMU MPU-6050
+  if (!imu.begin()) {
+    Serial_Bluetooth.println("Nu a fost gasit senzorul IMU MPU-6050!");
     while (1) {
       delay(10);
     }
   }
-
-  mpu.setAccelerometerRange(MPU6050_RANGE_2_G);  // Am setat pe 2G range-ul accelerației pentru a măsura diferențe mai discrete
-  
-  mpu.setGyroRange(MPU6050_RANGE_250_DEG);  // La fel ca mai sus, am setat range-ul la valoarea minimă și pentru rotație
-
-  mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
+  // Am setat pe +-8G intervalul de valori pentru accelerație deoarece aceasta poate avea valori destul de mari
+  imu.setAccelerometerRange(MPU6050_RANGE_8_G);
+  // Am setat pragul de frecvență pentru filtrul trece-jos la valoarea de 44Hz,
+  // deoarece vrem să ignorăm zgomotele foarte puternice din exterior
+  imu.setFilterBandwidth(MPU6050_BAND_44_HZ);
 
   delay(50);
 }
 
 void loop() {
-  // Se citesc evenimente înregistrate de senzor
-  mpu.getEvent(&a, &g, &temp);
+  /*
+  Funcție ce se execută ciclic, responsabilă cu implementarea funcționalității
+  */
 
-  // Se calculează magnitudinea (valoarea) accelerației
-  float accelMagnitude = sqrt(a.acceleration.x * a.acceleration.x +
-                               a.acceleration.y * a.acceleration.y +
-                               a.acceleration.z * a.acceleration.z);
-
-  // Se calculează magnitudinea rotației
-  float gyroMagnitude = sqrt(g.gyro.x * g.gyro.x +
-                              g.gyro.y * g.gyro.y +
-                              g.gyro.z * g.gyro.z);
-
-  // Detectarea impactului
-  impactSignal = 0; // 0 înseamnă că nu avem impact
-  if (accelMagnitude > accelThreshold || gyroMagnitude > gyroThreshold) {
-    if (impactStartTime == 0) {
-      impactStartTime = millis();
-    } else if (millis() - impactStartTime > impactDuration) {
-      //Serial.println("Confirmed Impact!");
-      impactSignal = 100; // Se atribuie o valoare mare semnalului pentru a putea fi observat mai ușor în grafice
-      impactStartTime = 0; // Resetăm după detecție
-    }
-  } else {
-    impactStartTime = 0; // Resetăm și dacă nu se îndeplinesc condițiile
-  }
-
-  // Se construiește mesajul ce va conține date de la tag-ul UWB, precum poziția în spațiu
-  output = "";
+  // Se construiește mesajul ce va conține date despre coordonate de la eticheta UWB
+  mesaj_bluetooth = "";
   while (Serial2.available()) {
-    char receivedChar = (char)Serial2.read();   // Citește un caracter de pe UART (de la DWM)
-    output += receivedChar;
+    char caracterReceptionat = (char)Serial2.read();   // Se citește caracter cu caracter de pe UART
+    mesaj_bluetooth += caracterReceptionat;
   }
 
-  output = processUWBData(output);
-  Serial.println(output);
-  SerialBT.println(output); // Se trimite mesajul construit prin BLE către RaspberryPi
+  mesaj_bluetooth = proceseaza_date_UWB(mesaj_bluetooth); // Se aplică funcția de procesare peste mesajul recepționat prin UART
+  Serial.println(mesaj_bluetooth); // Afișează mesajul pe serial pt debug (șterge)
+  Serial_Bluetooth.println(mesaj_bluetooth); // Se trimite mesajul construit prin Bluetooth către RaspberryPi
 
-  // Se construiește mesajul cu date provenite de la IMU
-  output = "MPU:";
-  output += a.acceleration.x;
-  output += ",";
-  output += a.acceleration.y;
-  output += ",";
-  output += a.acceleration.z;
-  output += ",";
-  output += g.gyro.x;
-  output += ",";
-  output += g.gyro.y;
-  output += ",";
-  output += g.gyro.z;
-  SerialBT.println(output); // Se trimite mesajul construit prin BLE către RaspberryPi
+  // Se citesc datele despre accelerație măsurate de senzorul IMU
+  // Antetul funcției obligă existența a trei parametri, dar datele relevante în cazul meu sunt doar cele despre accelerație
+  imu.getEvent(&accelerometru, &giroscop, &temperatura); 
 
-  delay(100); // Delay de 100ms între măsurători pentru a ne sincroniza cu restul senzorilor utilizați (ex: tag UWB)
+  // Se construiește mesajul cu date despre accelerație provenite de la IMU
+  mesaj_bluetooth = "MPU:";
+  mesaj_bluetooth += accelerometru.acceleration.x;
+  mesaj_bluetooth += ",";
+  mesaj_bluetooth += accelerometru.acceleration.y;
+  mesaj_bluetooth += ",";
+  mesaj_bluetooth += accelerometru.acceleration.z;
+  Serial_Bluetooth.println(mesaj_bluetooth); // Se trimite mesajul construit prin BLE către RaspberryPi
+
+  delay(100); // Delay de 100ms între măsurători pentru a asigura sincronizarea cu eticheta UWB ce furnizează date la o frecvență de 10Hz
 }

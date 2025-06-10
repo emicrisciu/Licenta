@@ -50,8 +50,9 @@ def filtru_complementar(pos_x, pos_y, acc_x, acc_y, dt):
 def verifica_intervalul_de_valori(x, y, min_x, max_x, min_y, max_y):
     """
     Funcție ce verifică dacă poziția curentă a mingii se află în limitele machetei
+    Se limitează valorile ce sunt măsurate pentru coordonate, astfel ca ele să fie vizibile în marginile graficului
     """
-    # Se limitează valorile ce sunt măsurate pentru coordonate, astfel ca ele să fie vizibile în marginile graficului
+    
     if x < min_x:
         x = min_x
     elif x > max_x:

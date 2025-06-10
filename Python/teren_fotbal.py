@@ -58,7 +58,7 @@ def deseneaza_teren():
     # Setarea limitelor graficului
     ax.set_xlim(-margine_teren, lungime_teren + margine_teren)
     ax.set_ylim(-margine_teren, latime_teren + margine_teren)
-    ax.set_title('Soccer Field with Real-time Ball Position')
+    ax.set_title('Poziția în timp real a mingii pe terenul de fotbal')
     ax.set_xlabel('X (mm)')
     ax.set_ylabel('Y (mm)')
 
