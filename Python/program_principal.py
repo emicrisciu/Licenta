@@ -25,16 +25,15 @@ fanion_activare_medie = False                                                   
 prag_medie = 3                                                                                                              # Prag ce reprezintă numărul minim de înregistrări consecutive apropiate ca distanță
 contor_medie = 0                                                                                                            # Contor ce numără pozițiile consecutive apropiate între ele
 vx, vy = 0, 0                                                                                                               # Variabile ce reprezintă viteze utilizate în implementarea filtrului complementar
-x_estimat, y_estimat = 0, 0                                                                                                 # Variabile ce stochează rezultatul apicării filtrului complementar
 dt = 0                                                                                                                      # Diferența de timp dintre două măsurători consecutive, folosită în calculul vitezei și a poziției estimate
 
 # Zona funcțiilor folosite în timpul procesării datelor
 
-def filtru_complementar(pos_x, pos_y, acc_x, acc_y, dt):
+def filtru_complementar(poz_anterioara, poz_x, poz_y, acc_x, acc_y, dt):
 	"""
 	Filtrul complementar ce implică folosirea accelerației pentru rafinarea poziției
 	"""
-	global x_estimat, y_estimat, vx, vy
+	global vx, vy # VEZI DACA NU SE POT INCLOCUI SI ASTEA!!!
 	alpha = 0.9 # Ponderea pe care o au coordonatele măsurate în calculul coordonatelor estimate prin filtrul complementar
     
 	# Calculul vitezei în funcție de accelerația măsurată
@@ -42,8 +41,8 @@ def filtru_complementar(pos_x, pos_y, acc_x, acc_y, dt):
 	vy = vy + acc_y * dt
     
 	# Calculul coordonatelor estimate în funcție de cele măsurate și de viteză
-	x_estimat = alpha * pos_x + (1 - alpha) * (x_estimat + vx * dt)
-	y_estimat = alpha * pos_y + (1 - alpha) * (y_estimat + vy * dt)
+	x_estimat = alpha * poz_x + (1 - alpha) * (poz_anterioara[0] + vx * dt)
+	y_estimat = alpha * poz_y + (1 - alpha) * (poz_anterioara[1] + vy * dt)
     
 	return x_estimat, y_estimat
 	
@@ -73,7 +72,7 @@ def calculeaza_distanta_dintre_puncte(x, y):
 
 def proceseaza_date():
     """
-    Funcție ce conține întreaga procesare a datelor și ce rulează într-un fir separat de execuție
+    Funcție ce conține întreaga procesare a datelor și rulează într-un fir separat de execuție
     
     Această funcție preia datele curente din cele două cozi ce sunt completate prin conexiunea Bluetooth, le prelucrează și le pune într-o coadă ce va fi citită
     de către firul de execuție responsabil cu actualizarea în timp real a graficului reprezentând terenul de fotbal
@@ -105,14 +104,14 @@ def proceseaza_date():
 		# Dacă am citit cu succes coordonatele mingii, continuăm cu aplicarea filtrului complementar și cu verificarea mai multor scenarii
         if uwb_x is not None and uwb_y is not None:
             # Dacă factorul de calitate este mulțumitor, sunt preluate datele primite direct de la senzor, fără prelucrare
-            if factor_calitate > 30:
+            if factor_calitate > 30 or len(coada_coordonate) < 1:
                 pozitie_noua = (uwb_x, uwb_y)
             # Se aplică filtrul complementar doar dacă factorul de calitate este nesatisfăcător
             else:
                 timp_curent = time.time()
                 dt = timp_curent - timp_anterior # ?? scoate afara dt-ul din if-else
                 timp_anterior = timp_curent
-                pozitie_noua = filtru_complementar(uwb_x, uwb_y, acc_x, acc_y, dt)
+                pozitie_noua = filtru_complementar(coada_coordonate[-1], uwb_x, uwb_y, acc_x, acc_y, dt)
 			
             # După ce am decis care e poziția mai apropiată de realitate, verificăm să se afle în limitele graficului, din motive mai mult estetice
             pozitie_noua = verifica_intervalul_de_valori(pozitie_noua[0], pozitie_noua[1], -teren_fotbal.margine_teren, teren_fotbal.lungime_teren + teren_fotbal.margine_teren, -teren_fotbal.margine_teren, teren_fotbal.latime_teren + teren_fotbal.margine_teren)
@@ -320,7 +319,6 @@ def functie_de_test():
         time.sleep(0.1)
 
 
-# Main execution
 def main(mod_test=False):
     """
     Funcția principală a sistemului în care se creează și se pornesc firele paralele de execuție 
