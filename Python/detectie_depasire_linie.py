@@ -98,46 +98,23 @@ def detecteaza_depasirea_liniei(pozitie_curenta, pozitie_anterioara, coordonata_
                     mesaj += "autului de poarta / cornerului!"
             else:
                 directie = "neclara"
+                mesaj = "Mingea se afla in afara terenului!"
             
 			# Se calculează viteza cu care mingea a depășit linia
             dx = pozitie_curenta[0] - pozitie_anterioara[0]
             dy = pozitie_curenta[1] - pozitie_anterioara[1]
             viteza = math.sqrt(dx**2 + dy**2) / dt
             
+            # Se construiește mesajul afișat în cadrul notificării
             return {
                 "margine": denumire_margine,
                 "punct_de_intersectie": punct_de_intersectie,
                 "directie": directie,
                 "viteza": viteza/1000,
-                "mesaj": mesaj
+                "mesaj": f"{mesaj}\n\nLinia ce a fost depasita: {denumire_margine}" +
+                         f"\nDirectia: {directie}" +
+                         f"\nPunctul prin care a fost depasita linia: {punct_de_intersectie}" +
+                         f"\nViteza: {viteza/1000:.2f} m/s"
             }
     
     return None
-    
-# def detecteaza_gol(coordonata_z, punct_de_intersectie, crossing_direction): # TO BE DELETED!
-#     return coordonata_z <= 500 and crossing_direction == "afara" and (start_poarta_axa_y <= punct_de_intersectie[1] <= start_poarta_axa_y + latime_poarta)
-    
-def calculeaza_distanta_punct_dreapta(punct, linie):
-	"""
-	Funcție ce calculează distanța de la un punct la o dreaptă
-	"""
-	x0, y0 = punct
-	(x1, y1), (x2, y2) = linie
-
-	# Check if the linie points are the same (not a valid linie)
-	if (x1, y1) == (x2, y2):
-		# Calculate distance to the punct on the linie
-		return ((x0 - x1)**2 + (y0 - y1)**2)**0.5
-
-	# Calculate the distance using the formula:
-	# d = |Ax0 + By0 + C| / sqrt(A^2 + B^2)
-	# where Ax + By + C = 0 is the linie equation
-
-	A = y2 - y1
-	B = x1 - x2
-	C = x2*y1 - x1*y2
-
-	numarator = abs(A*x0 + B*y0 + C)
-	numitor = (A**2 + B**2)**0.5
-
-	return numarator / numitor

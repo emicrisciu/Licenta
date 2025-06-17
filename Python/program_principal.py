@@ -15,30 +15,30 @@ import detectie_depasire_linie
 
 # Zona variabilelor globale
 
-semafor = threading.Lock()                                                                                                  # Semafor folosit pentru accesarea datelor procesate din multiple fire de execuție
+semafor = threading.Lock()                                                                                                               # Semafor folosit pentru accesarea datelor procesate din multiple fire de execuție
 uwb_x, uwb_y, uwb_z, factor_calitate, acc_x, acc_y, acc_z = teren_fotbal.lungime_teren/2, teren_fotbal.latime_teren/2, 0, 0, 0, 0, 0     # Variabile ce sunt utilizate în funcția de procesare și care rețin valorile coordonatelor și a accelerațiilor pe toate axele
-x_data, y_data = [], []                                                                                                     # Liste ce sunt folosite la actualizarea graficului și ce rețin coordonatele în plan ce trebuie desenate
-coada_coordonate = deque(maxlen=20)                                                                                         # Buffer circular ce stochează coordonatele mingii, din înregistrări consecutive
-timp_anterior = time.time()                                                                                                 # Variabilă ce memorează timpul, folosită în calculul lui dt pentru determinarea diferiților parametrii
-adresa_mac_esp = "A0:A3:B3:97:4B:62"                                                                                        # Adresa MAC a ESP32
-fanion_activare_medie = False                                                                                               # Fanion de tip boolean care indică aplicarea mediei aritmetice în procesarea pozițiilor consecutive relativ apropiate
-prag_medie = 3                                                                                                              # Prag ce reprezintă numărul minim de înregistrări consecutive apropiate ca distanță
-contor_medie = 0                                                                                                            # Contor ce numără pozițiile consecutive apropiate între ele
-vx, vy = 0, 0                                                                                                               # Variabile ce reprezintă viteze utilizate în implementarea filtrului complementar
-dt = 0                                                                                                                      # Diferența de timp dintre două măsurători consecutive, folosită în calculul vitezei și a poziției estimate
+x_data, y_data = [], []                                                                                                                  # Liste ce sunt folosite la actualizarea graficului și ce rețin coordonatele în plan ce trebuie desenate
+coada_coordonate = deque(maxlen=20)                                                                                                      # Buffer circular ce stochează coordonatele mingii, din înregistrări consecutive
+coada_viteze = deque(maxlen=20)                                                                                                          # Buffer circular ce stochează vitezele mingii, obținute între înregistrări consecutive
+timp_anterior = time.perf_counter()                                                                                                      # Variabilă ce memorează timpul, folosită în calculul lui dt pentru determinarea diferiților parametrii
+adresa_mac_esp = "A0:A3:B3:97:4B:62"                                                                                                     # Adresa MAC a ESP32
+fanion_activare_medie = False                                                                                                            # Fanion de tip boolean care indică aplicarea mediei aritmetice în procesarea pozițiilor consecutive relativ apropiate
+prag_medie = 3                                                                                                                           # Prag ce reprezintă numărul minim de înregistrări consecutive apropiate ca distanță
+contor_medie = 0                                                                                                                         # Contor ce numără pozițiile consecutive apropiate între ele
+dt = 0                                                                                                                                   # Diferența de timp dintre două măsurători consecutive, folosită în calculul vitezei și a poziției estimate
 
 # Zona funcțiilor folosite în timpul procesării datelor
 
-def filtru_complementar(poz_anterioara, poz_x, poz_y, acc_x, acc_y, dt):
+def filtru_complementar(poz_anterioara, viteza_anterioara, poz_x, poz_y, acc_x, acc_y, dt):
 	"""
 	Filtrul complementar ce implică folosirea accelerației pentru rafinarea poziției
 	"""
-	global vx, vy # VEZI DACA NU SE POT INCLOCUI SI ASTEA!!!
+ 
 	alpha = 0.9 # Ponderea pe care o au coordonatele măsurate în calculul coordonatelor estimate prin filtrul complementar
     
 	# Calculul vitezei în funcție de accelerația măsurată
-	vx = vx + acc_x * dt
-	vy = vy + acc_y * dt
+	vx = viteza_anterioara[0] + acc_x * dt
+	vy = viteza_anterioara[1] + acc_y * dt
     
 	# Calculul coordonatelor estimate în funcție de cele măsurate și de viteză
 	x_estimat = alpha * poz_x + (1 - alpha) * (poz_anterioara[0] + vx * dt)
@@ -77,8 +77,9 @@ def proceseaza_date():
     Această funcție preia datele curente din cele două cozi ce sunt completate prin conexiunea Bluetooth, le prelucrează și le pune într-o coadă ce va fi citită
     de către firul de execuție responsabil cu actualizarea în timp real a graficului reprezentând terenul de fotbal
     """
-    global uwb_x, uwb_y, uwb_z, factor_calitate, acc_x, acc_y, contor_medie, fanion_activare_medie, coada_coordonate, dt
-    timp_anterior = time.time()
+    global uwb_x, uwb_y, uwb_z, factor_calitate, acc_x, acc_y, contor_medie, fanion_activare_medie, coada_coordonate, coada_viteze, dt
+    timp_anterior = time.perf_counter()
+    coada_viteze.append((0, 0))
     while not comunicare_bluetooth.termina_program:
 		
         # Se încearcă citirea datelor ce populează cozile aferente coordonatelor și accelerațiilor
@@ -108,14 +109,11 @@ def proceseaza_date():
                 pozitie_noua = (uwb_x, uwb_y)
             # Se aplică filtrul complementar doar dacă factorul de calitate este nesatisfăcător
             else:
-                timp_curent = time.time()
-                dt = timp_curent - timp_anterior # ?? scoate afara dt-ul din if-else
-                timp_anterior = timp_curent
-                pozitie_noua = filtru_complementar(coada_coordonate[-1], uwb_x, uwb_y, acc_x, acc_y, dt)
+                pozitie_noua = filtru_complementar(coada_coordonate[-1], coada_viteze[-1], uwb_x, uwb_y, acc_x, acc_y, dt)
 			
             # După ce am decis care e poziția mai apropiată de realitate, verificăm să se afle în limitele graficului, din motive mai mult estetice
             pozitie_noua = verifica_intervalul_de_valori(pozitie_noua[0], pozitie_noua[1], -teren_fotbal.margine_teren, teren_fotbal.lungime_teren + teren_fotbal.margine_teren, -teren_fotbal.margine_teren, teren_fotbal.latime_teren + teren_fotbal.margine_teren)
-			
+            
             # Se lipesc noile date la coada ce stochează coordonate, folosind un semafor, deoarece aceasta e accesată din mai multe fire de execuție
             with semafor:
                 coada_coordonate.append((pozitie_noua[0], pozitie_noua[1]))
@@ -136,6 +134,18 @@ def proceseaza_date():
                 punct_medie = (suma_x / contor_medie, suma_y / contor_medie)
                 with semafor:
                     coada_coordonate.append(punct_medie) #poate fi problema pt ca tot introduc valori medii in buffer, poate lasam doar partea de afisat sa ia in considerare media!
+            
+            timp_curent = time.perf_counter()
+            dt = timp_curent - timp_anterior
+            timp_anterior = timp_curent
+            
+            # Dupa inregistrarea noilor coordonate se stocheaza si viteza mingii intre cele mai recente doua pozitii consecutive
+            if len(coada_coordonate) > 1:
+                dx = pozitie_noua[0] - coada_coordonate[-2][0]
+                dy = pozitie_noua[1] - coada_coordonate[-2][1]
+                viteza_x = dx / dt
+                viteza_y = dy / dt
+                coada_viteze.append((viteza_x, viteza_y))           
 				
             # Dacă avem cel puțin două măsurători ne putem pune deja problema depășirii liniilor terenului
             if len(coada_coordonate) > 2:
@@ -148,86 +158,6 @@ def proceseaza_date():
                     print(f"Punctul prin care a fost depasita linia: ({informatii_depasire_linie['punct_de_intersectie'][0]:.2f}, {informatii_depasire_linie['punct_de_intersectie'][1]:.2f})")
                     print(f"Viteza: {informatii_depasire_linie['viteza']:.2f} m/s")
                     comunicare_bluetooth.afiseaza_notificare(informatii_depasire_linie['mesaj'])
-			
-			#print(f"pozitie after range check: {processed_position}")
-			
-			# for boundary_name, boundary_points in margini_teren.items():
-				# p1, p2 = boundary_points
-				# boundary_line = (p1, p2)
-				# if calculeaza_distanta_punct_dreapta(pozitie_noua, boundary_line) < 200:
-					# print(f"\n\nDANGEROUS! - {boundary_name}\n\n")
-					# set a flag that indicates that the ball is near a field boundary or jump directly to line crossing check
-					
-			# Handle line crossing detection
-			# informatii_depasire_linie = detecteaza_depasirea_liniei(pozitie_noua)
-			# if informatii_depasire_linie:
-				# print(f"\n\nLine crossed: {informatii_depasire_linie['boundary']}")
-				# print(f"Direction: {informatii_depasire_linie['direction']}")
-				# print(f"Position: ({informatii_depasire_linie['crossing_point'][0]:.2f}, {informatii_depasire_linie['crossing_point'][1]:.2f})")
-				# print(f"Velocity: {informatii_depasire_linie['velocity']:.2f} m/s")
-				
-				# if detecteaza_gol(local_uwb_z, informatii_depasire_linie['crossing_point'], informatii_depasire_linie['direction']):
-					# print("GOAAAAAAAAAAAAAAAAAAAAAAAAAAL!!!")
-					# for zona in zone_teren.values():
-						# zona.set_alpha(1)
-				
-				# Here you could add code to trigger actions based on the crossing
-				# For example, sending a signal, playing a sound, etc.
-			# Handle outliers
-			# ~ if coada_coordonate and is_outlier(pozitie_noua, coada_coordonate[-1]):
-				# ~ if outlier_count == 0:
-					# ~ outlier_position = pozitie_noua
-					# ~ outlier_count += 1
-					# ~ contor_medie = 0
-					# ~ fanion_activare_medie = False
-				# ~ else:
-					# ~ if math.sqrt((pozitie_noua[0] - outlier_position[0])**2 + (pozitie_noua[1] - outlier_position[1])**2) < 200:
-						# ~ outlier_count += 1
-						# ~ if outlier_count >= outlier_threshold:
-							# ~ outlier_count = 0
-							# ~ outlier_position = None
-							# ~ interp_x, interp_y = filtru_complementar(local_uwb_x, local_uwb_y, local_acc_x, local_acc_y, dt)
-							# ~ coada_coordonate.append((interp_x, interp_y))
-					# ~ else:
-						# ~ outlier_position = pozitie_noua
-						# ~ outlier_count = 1
-						# ~ interp_x, interp_y = filtru_complementar(local_uwb_x, local_uwb_y, local_acc_x, local_acc_y, dt)
-						# ~ coada_coordonate.append((interp_x, interp_y))
-			# ~ else:
-				# ~ # Normal position actualizeaza with complementary filter
-				# ~ x_estimat, y_estimat = filtru_complementar(local_uwb_x, local_uwb_y, local_acc_x, local_acc_y, dt)
-				
-				# ~ # Check if position is relatively stable
-				# ~ if coada_coordonate and math.sqrt((x_estimat - coada_coordonate[-1][0])**2 + (y_estimat - coada_coordonate[-1][1])**2) < 100:
-					# ~ contor_medie += 1
-					# ~ if contor_medie >= prag_medie:
-						# ~ fanion_activare_medie = True
-				# ~ else:
-					# ~ contor_medie = 0
-					# ~ fanion_activare_medie = False
-						
-				# ~ coada_coordonate.append((x_estimat, y_estimat))
-				
-			# ~ coada_coordonate.append((local_uwb_x, local_uwb_y))
-			
-			# ~ if len(coada_coordonate) >= 5:
-				# ~ interp_x, interp_y = qf_weighted_savgol_filter(local_qf)
-				# ~ print("\n\n\n\nSMOOOOOTH\n\n\n\n")
-			# ~ else:
-				# ~ interp_x, interp_y = local_uwb_x, local_uwb_y
-			
-				# ~ # Apply moving average when ball is stable
-				# ~ if len(coada_coordonate) >= 3 and fanion_activare_medie:
-					# ~ suma_x = sum(pozitie[0] for pozitie in coada_coordonate)
-					# ~ suma_y = sum(pozitie[1] for pozitie in coada_coordonate)
-					# ~ avg_x = suma_x / len(coada_coordonate)
-					# ~ avg_y = suma_y / len(coada_coordonate)
-					# ~ interp_x, interp_y = avg_x, avg_y
-				# ~ else:
-					# ~ interp_x, interp_y = x_estimat, y_estimat
-					
-			# ~ interp_x, interp_y = enhanced_position_filter(local_uwb_x, local_uwb_y, local_qf)
-			# ~ interp_x, interp_y = local_uwb_x, local_uwb_y
 
 def actualizeaza(cadru):
     """
@@ -270,43 +200,6 @@ def actualizeaza(cadru):
             return tuple(elemente_de_actualizat)
 	
     return tuple()
-	# start_time = time.time()
-	# global timp_anterior, uwb_x, uwb_y, uwb_z, factor_calitate, acc_x, acc_y, acc_z
-	# #global factor_calitate, x_estimat, y_estimat, uwb_x, uwb_y, uwb_z, acc_x, acc_y, timp_anterior, interp_x, interp_y, dt, termina_program
-	# #global outlier_count, outlier_position, fanion_activare_medie, contor_medie
-	# #global last_zone, detectie_depasire_linie_confidence, crossing_cooldown
-    
-	# if comunicare_bluetooth.termina_program:
-		# return tuple()
-    
-	# timp_curent = time.time()
-	# dt = timp_curent - timp_anterior
-	# print(f"dt = {dt}")
-	# timp_anterior = timp_curent
-
-	# # with lock:
-		# # local_uwb_x = uwb_x
-		# # local_uwb_y = uwb_y
-		# # local_uwb_z = uwb_z
-		# # local_qf = factor_calitate
-		# # local_acc_x = acc_x
-		# # local_acc_y = acc_y
-        
-	
-	# end_time = time.time()
-    
-	# elemente_de_actualizat = [teren_fotbal.sc]
-	# # for nume_zona, zona in teren_fotbal.zone_teren.items():
-		# # elemente_de_actualizat.append(zona) BIG PROBLEM TO SOLVE
-
-	# print(f"cadru processing time: {end_time - start_time:.4f} seconds")
-	# print(f"Returned artists: {elemente_de_actualizat}")
-	# return tuple(elemente_de_actualizat)
-
-
-# def update1(cadru):
-	# teren_fotbal.sc.set_offsets([[0, 0]])
-	# return (teren_fotbal.sc,)
 
 def functie_de_test():
     """
@@ -364,4 +257,4 @@ def main(mod_test=False):
         exit(1)
 
 if __name__ == "__main__":
-    main(mod_test=False)
+    main(mod_test=True)

@@ -13,9 +13,9 @@ import tkinter as tk
 
 # Zona inițializării variabilelor globale
 termina_program = False
-coada_date_tag_uwb = deque(maxlen=10) # size?
-coada_date_imu = deque(maxlen=10)
-socket_esp = None #bluetooth.BluetoothSocket(bluetooth.RFCOMM)
+coada_date_tag_uwb = deque(maxlen=20)
+coada_date_imu = deque(maxlen=20)
+socket_esp = None
 
 # Zona funcțiilor folosite pentru asigurarea comunicării prin Bluetooth între modulele RaspberryPi și ESP32
 
@@ -70,7 +70,7 @@ def afiseaza_notificare(mesaj):
             
 def verifica_conexiune_bluetooth():
     """
-    Funcție ce verifică starea conexiunii Bluetooth - DE ACTUALIZAT! DEOCAMDATĂ SE VERIFICĂ DOAR DACĂ CONEXIUNEA A PORNIT, NU ȘI DACĂ SE STINGE PE PARCURS!
+    Funcție ce verifică starea conexiunii Bluetooth și semnalează nevoia de oprire a programului dacă aceasta este întreruptă
     """
     global termina_program, socket_esp
     while not termina_program:
@@ -78,9 +78,9 @@ def verifica_conexiune_bluetooth():
             if socket_esp is None:
                 raise ConnectionError("Nu exista socket ESP!")
 
-			# Trimite un semnal inofensiv sau verifică cu recv non-blockin
-            socket_esp.send(b'\n')  # trimite ceva neutru, gen newline
-            time.sleep(2)  # verifică la fiecare 2 secunde
+			# Trimite un caracter neutru
+            socket_esp.send(b'\n')
+            time.sleep(2)  # Verifică la fiecare 2 secunde
         except (OSError, ConnectionError) as e:
             print(f"[ERROR] Conexiunea Bluetooth a eșuat: {e}")
             termina_program = True
