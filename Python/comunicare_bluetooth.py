@@ -61,7 +61,7 @@ def afiseaza_notificare(mesaj):
     """
     popup = tk.Tk()
     popup.title("Notificare")
-    popup.geometry("500x100")
+    popup.geometry("500x200")
     label = tk.Label(popup, text=mesaj, font=("Arial", 12))
     label.pack(pady=20)
 
