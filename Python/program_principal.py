@@ -133,7 +133,7 @@ def proceseaza_date():
                 suma_y = sum(pozitie[1] for pozitie in list(coada_coordonate)[-contor_medie:])
                 punct_medie = (suma_x / contor_medie, suma_y / contor_medie)
                 with semafor:
-                    coada_coordonate.append(punct_medie) #poate fi problema pt ca tot introduc valori medii in buffer, poate lasam doar partea de afisat sa ia in considerare media!
+                    coada_coordonate.append(punct_medie)
             
             timp_curent = time.perf_counter()
             dt = timp_curent - timp_anterior
@@ -216,7 +216,7 @@ def main(mod_test=False):
     """
     Funcția principală a sistemului în care se creează și se pornesc firele paralele de execuție 
     """
-	#global termina_program
+    
     try:
         # Setarea conexiunii Bluetooth
         comunicare_bluetooth.seteaza_conexiune_bluetooth(adresa_mac_esp)

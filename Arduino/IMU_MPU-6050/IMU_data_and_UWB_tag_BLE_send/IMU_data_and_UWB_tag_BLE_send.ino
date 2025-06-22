@@ -17,15 +17,14 @@ String proceseaza_date_UWB(String date) {
   Funcție ce procesează datele primite prin interfața serială UART de la eticheta UWB
   */
 
-  // verifica daca toate ancorele sunt awake!
-  // int checkIndex4 = date.indexOf("DIST2:0x");
-  // int checkIndex5 = date.indexOf("DIST3:0x");
-  // if(checkIndex4 != -1 && checkIndex5 == -1)
-  // {
-  //   Serial.print("ANCORA: ");
-  //   Serial.println(date);
-  //   return "ANCORA";
-  // }
+  // Se verifică dacă toate ancorele necesare trilaterației sunt funcționale
+  int checkIndex2 = date.indexOf("DIST2:0x");
+  int checkIndex3 = date.indexOf("DIST3:0x");
+  if(checkIndex2 != -1 && checkIndex3 == -1)
+  {
+    return "ANCORA";
+  }
+
   // Căutăm prefixul "POS:[" în linia curentă primită de la eticheta UWB
   int startIndex = date.indexOf("POS:[");
   if (startIndex == -1) return ""; // Nu am găsit șablonul, deci returnăm un mesaj gol
