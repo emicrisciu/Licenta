@@ -5,7 +5,7 @@ import random
 def simuleaza_traiectoria():
     """
     Generează o traiectorie simplă cu evenimente interesante.
-    Returnează o listă de tuple (x, y, z, timestamp)
+    Returnează o listă de tupluri (x, y, z, qf)
     """
     start_x = 900
     start_y = 600
