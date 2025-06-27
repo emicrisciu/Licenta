@@ -21,6 +21,7 @@ https://github.com/emicrisciu/Licenta
 2. Pentru crearea mediului virtual se introduce în terminal `python -m venv nume_mediu`
 3. Pentru activarea mediului virtual se tastează `source nume_mediu/bin/activate`
 4. Pentru instalarea oricărui pachet necesar execuției programului se poate introduce `pip install nume_pachet`
+5. Biblioteca ce conține funcțiile specifice comunicării Bluetooth se instalează prin comanda `pip install git+https://github.com/pybluez/pybluez.git`
 5. Pentru lansarea în execuție a aplicației este folosită comanda `python program_principal.py`
 6. Aplicația se oprește prin închiderea ferestrei ce cuprinde graficul sub forma unui teren de fotbal
 7. La final, pentru dezactivarea mediului virtual, se execută comanda `deactivate`
